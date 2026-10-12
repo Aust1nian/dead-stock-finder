@@ -71,7 +71,22 @@ function As-User([string]$Body, [int]$Timeout = 600) {
   $script:n++
   $done = "$work\done-$script:n.txt"
   $ps1 = "$work\step-$script:n.ps1"
-  Set-Content $ps1 ("`$ErrorActionPreference = 'Continue'`r`n" + $Body + "`r`nSet-Content '$done' 'done'")
+  # Run-Wait starts a program directly (CreateProcess), not through the
+  # shell: the shell would show the "Open File - Security Warning" box for a
+  # downloaded, unsigned file, which no one can click in a batch session. An
+  # owner sees SmartScreen instead; the recovery card covers it.
+  $prelude = @'
+$ErrorActionPreference = 'Continue'
+function Run-Wait([string]$File, [string]$Arguments) {
+  $psi = New-Object System.Diagnostics.ProcessStartInfo $File
+  $psi.Arguments = $Arguments
+  $psi.UseShellExecute = $false
+  $p = [System.Diagnostics.Process]::Start($psi)
+  if (-not $p.WaitForExit(540000)) { $p.Kill(); return -1 }
+  return $p.ExitCode
+}
+'@
+  Set-Content $ps1 ($prelude + "`r`n" + $Body + "`r`nSet-Content '$done' 'done'")
   schtasks /create /tn "dsf-install-step" /tr "powershell -NoProfile -ExecutionPolicy Bypass -File $ps1" /sc once /st 23:59 /ru $user /rp $password /f | Out-Null
   schtasks /run /tn "dsf-install-step" | Out-Null
   for ($i = 0; $i -lt $Timeout -and -not (Test-Path $done); $i++) { Start-Sleep -Seconds 1 }
@@ -81,22 +96,21 @@ function As-User([string]$Body, [int]$Timeout = 600) {
 
 # 3. Install the older build as that user; self-test; owner state.
 $ok = As-User @"
-`$p = Start-Process -FilePath '$work\old-setup.exe' -ArgumentList '/S' -Wait -PassThru
-Set-Content '$work\install-exit.txt' `$p.ExitCode
+Run-Wait '$work\old-setup.exe' '/S' | Set-Content '$work\install-exit.txt'
 `$exe = Join-Path `$env:LOCALAPPDATA 'Dead Stock Finder\dead-stock-finder.exe'
 Set-Content '$work\exe-path.txt' `$exe
-`$st = Start-Process -FilePath `$exe -ArgumentList '--self-test','--json-out','$work\selftest-installed.json' -Wait -PassThru
-Set-Content '$work\selftest-exit.txt' `$st.ExitCode
+Run-Wait `$exe '--self-test --json-out $work\selftest-installed.json' | Set-Content '$work\selftest-exit.txt'
 & `$exe --test-mark-setup | Out-Null
 cmdkey /generic:com.tightline.deadstockfinder/square-production /user:Square /pass:upgrade-test-token | Out-Null
-Start-Process -FilePath `$exe -ArgumentList '--schedule','register','--json-out','$work\register.json' -Wait | Out-Null
+Run-Wait `$exe '--schedule register --json-out $work\register.json' | Out-Null
 Get-FileHash (Join-Path `$env:LOCALAPPDATA 'com.tightline.deadstockfinder\cache.sqlite') | Select-Object -ExpandProperty Hash | Set-Content '$work\cache-before.txt'
 whoami /groups | Out-File '$work\groups.txt'
 "@
 $exePath = (Get-Content "$work\exe-path.txt" -ErrorAction SilentlyContinue)
 Check "installed-as-standard-user" $(if ($ok -and (Get-Content "$work\install-exit.txt" -ErrorAction SilentlyContinue) -eq "0") { "pass" } else { "fail" }) "$exePath"
-$elevated = (Get-Content "$work\groups.txt" -Raw -ErrorAction SilentlyContinue) -match "S-1-5-32-544.*Enabled group"
-Check "never-elevated" $(if ($elevated) { "fail" } else { "pass" }) "the install ran with a standard user's token"
+$groups = Get-Content "$work\groups.txt" -Raw -ErrorAction SilentlyContinue
+$elevated = $groups -match "S-1-5-32-544.*Enabled group"
+Check "never-elevated" $(if (-not $groups) { "fail" } elseif ($elevated) { "fail" } else { "pass" }) $(if ($groups) { "the install ran with a standard user's token" } else { "the step as the standard user never finished" })
 $selftest = (Get-Content "$work\selftest-installed.json" -Raw -ErrorAction SilentlyContinue) -replace "\s+", " "
 if ($selftest -and $selftest.Length -gt 400) { $selftest = $selftest.Substring(0, 400) }
 Check "self-test" $(if ((Get-Content "$work\selftest-exit.txt" -ErrorAction SilentlyContinue) -eq "0") { "pass" } else { "fail" }) "$selftest"
@@ -108,8 +122,7 @@ Check "task-under-user" $(if ($xml -match "<LogonTrigger>" -and $xml -match "Int
 
 # 4. Upgrade: the newer installer over the older one.
 $ok = As-User @"
-`$p = Start-Process -FilePath '$work\new-setup.exe' -ArgumentList '/S' -Wait -PassThru
-Set-Content '$work\upgrade-exit.txt' `$p.ExitCode
+Run-Wait '$work\new-setup.exe' '/S' | Set-Content '$work\upgrade-exit.txt'
 cmdkey /list:com.tightline.deadstockfinder/square-production | Out-File '$work\cred-after.txt'
 Get-FileHash (Join-Path `$env:LOCALAPPDATA 'com.tightline.deadstockfinder\cache.sqlite') | Select-Object -ExpandProperty Hash | Set-Content '$work\cache-after.txt'
 (Get-Item (Join-Path `$env:LOCALAPPDATA 'Dead Stock Finder\dead-stock-finder.exe')).VersionInfo.ProductVersion | Set-Content '$work\version-after.txt'
@@ -126,7 +139,7 @@ Check "upgrade-keeps-background-check" $(if ($xml -match "<LogonTrigger>" -and $
 # 5. Uninstall (silent: the owner didn't ask to delete app data).
 $ok = As-User @"
 `$u = Join-Path `$env:LOCALAPPDATA 'Dead Stock Finder\uninstall.exe'
-Start-Process -FilePath `$u -ArgumentList '/S' -Wait
+Run-Wait `$u '/S' | Out-Null
 Start-Sleep -Seconds 5
 Test-Path (Join-Path `$env:LOCALAPPDATA 'Dead Stock Finder\dead-stock-finder.exe') | Set-Content '$work\exe-left.txt'
 Test-Path (Join-Path `$env:LOCALAPPDATA 'com.tightline.deadstockfinder\cache.sqlite') | Set-Content '$work\cache-left.txt'

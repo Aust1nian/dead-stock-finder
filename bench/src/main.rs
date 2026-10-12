@@ -47,8 +47,14 @@ fn serve(args: &[String]) {
     let orders: usize = arg(args, "--orders", "100000").parse().unwrap();
     let latency: u64 = arg(args, "--latency-ms", "300").parse().unwrap();
     let mbps: f64 = arg(args, "--mbps", "20").parse().unwrap();
-    let scenario =
+    // Real Square orders carry taxes, tenders, net amounts and more: pad each
+    // to a realistic size so the bandwidth cap costs what it would.
+    let order_bytes: usize = arg(args, "--order-bytes", "2500").parse().unwrap();
+    let mut scenario =
         dsf_gen::scenario_sized(7, dsf_gen::Size { items, max_variations: 5, orders, locations: 3 });
+    for o in scenario.mock.orders.iter_mut() {
+        pad(o, order_bytes);
+    }
     let now = scenario.first.at;
     let variation_ids: Vec<String> = scenario
         .mock
@@ -109,6 +115,13 @@ fn serve(args: &[String]) {
                                 "line_items": [{ "uid": "1", "catalog_object_id": var, "quantity": "1", "item_type": "ITEM" }] })
                     })
                     .collect();
+                let new: Vec<Value> = new
+                    .into_iter()
+                    .map(|mut o| {
+                        pad(&mut o, order_bytes);
+                        o
+                    })
+                    .collect();
                 s.add_orders(new);
                 println!("ok");
             }
@@ -124,6 +137,13 @@ fn serve(args: &[String]) {
             _ => println!("?"),
         }
         std::io::stdout().flush().unwrap();
+    }
+}
+
+fn pad(order: &mut Value, bytes: usize) {
+    let size = serde_json::to_vec(order).map(|v| v.len()).unwrap_or(0);
+    if size < bytes {
+        order["note"] = json!("x".repeat(bytes - size));
     }
 }
 
@@ -214,10 +234,23 @@ fn run(args: &[String]) -> i32 {
     let orders = arg(args, "--orders", "100000");
     let latency = arg(args, "--latency-ms", "300");
     let mbps = arg(args, "--mbps", "20");
+    let order_bytes = arg(args, "--order-bytes", "2500");
     let out = arg(args, "--out", "perf.json");
     let generated = Instant::now();
     let mut server = Command::new(&me)
-        .args(["serve", "--items", &items, "--orders", &orders, "--latency-ms", &latency, "--mbps", &mbps])
+        .args([
+            "serve",
+            "--items",
+            &items,
+            "--orders",
+            &orders,
+            "--latency-ms",
+            &latency,
+            "--mbps",
+            &mbps,
+            "--order-bytes",
+            &order_bytes,
+        ])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -293,7 +326,7 @@ fn run(args: &[String]) -> i32 {
     ];
     let report = json!({
         "items": items, "orders": orders, "variations": info["variations"],
-        "connection": { "latency_ms": latency, "mbps": mbps },
+        "connection": { "latency_ms": latency, "mbps": mbps, "order_bytes": order_bytes },
         "first_sync": first, "first_labels": labels, "daily": daily, "peak_rss_mb": peak, "mock": stats,
         "targets": checks.iter().map(|(n, ok)| json!({ "target": n, "met": ok })).collect::<Vec<_>>(),
     });

@@ -77,6 +77,8 @@ pub struct Faults {
     /// A simulated connection: every answer waits this long, plus its size
     /// at this many bytes per second (0 = unlimited).
     pub latency: std::time::Duration,
+    /// Search answers carry no `latest_time` (it is a beta field).
+    pub omit_latest_time: bool,
     pub bytes_per_second: u64,
 }
 
@@ -710,30 +712,34 @@ fn catalog_search(s: &State, body: &Value) -> HttpResponse {
     let include_deleted = body.get("include_deleted_objects").and_then(Value::as_bool).unwrap_or(false);
     let begin = body.get("begin_time").and_then(parse_time);
     let limit = body.get("limit").and_then(Value::as_u64).unwrap_or(100).clamp(1, 1000) as usize;
-    let mut found: Vec<Value> = Vec::new();
-    for obj in s.objects.values() {
-        if types.iter().any(|t| obj["type"] == t.as_str()) {
-            found.push(obj.clone());
-        }
-        if types.iter().any(|t| t == "ITEM_VARIATION") {
-            found.extend(variations(obj));
-        }
-    }
+    // References, cloned only for the page sent (20,000-item runs).
+    let nested: Vec<Value> = if types.iter().any(|t| t == "ITEM_VARIATION") {
+        s.objects.values().flat_map(variations).collect()
+    } else {
+        Vec::new()
+    };
+    let mut found: Vec<&Value> = s
+        .objects
+        .values()
+        .filter(|obj| types.iter().any(|t| obj["type"] == t.as_str()))
+        .chain(nested.iter())
+        .collect();
     if include_deleted {
-        found
-            .extend(s.tombstones.values().filter(|o| types.iter().any(|t| o["type"] == t.as_str())).cloned());
+        found.extend(s.tombstones.values().filter(|o| types.iter().any(|t| o["type"] == t.as_str())));
     }
     if let Some(begin) = begin {
         found.retain(|o| parse_time(&o["updated_at"]).is_some_and(|t| t > begin));
     }
     found.sort_by(|a, b| a["id"].as_str().cmp(&b["id"].as_str()));
-    let latest = found.iter().filter_map(|o| parse_time(&o["updated_at"])).max();
+    // Square: "When the associated product catalog was last updated."
+    let latest =
+        s.objects.values().chain(s.tombstones.values()).filter_map(|o| parse_time(&o["updated_at"])).max();
     let (objects, cursor) = page(&found, decode_cursor(body), limit);
     let mut out = json!({ "objects": objects });
     if let Some(c) = cursor {
         out["cursor"] = json!(c);
     }
-    if let Some(t) = latest {
+    if let Some(t) = latest.filter(|_| !s.faults.omit_latest_time) {
         out["latest_time"] = json!(t.to_rfc3339_opts(SecondsFormat::Millis, true));
     }
     HttpResponse::json(200, &out)
@@ -1141,7 +1147,7 @@ fn search_orders(s: &State, body: &Value) -> HttpResponse {
     }
     let start = range.get("start_at").and_then(parse_time);
     let end = range.get("end_at").and_then(parse_time);
-    let mut found: Vec<&Value> = s
+    let found: Vec<&Value> = s
         .orders
         .iter()
         .filter(|o| locations.contains(&o["location_id"].as_str().unwrap_or("")))
@@ -1156,11 +1162,11 @@ fn search_orders(s: &State, body: &Value) -> HttpResponse {
         .collect();
     let asc = body.pointer("/query/sort/sort_order").and_then(Value::as_str) == Some("ASC");
     let sort_key = sort_field.to_ascii_lowercase();
-    found.sort_by(|a, b| {
-        let ka = (parse_time(&a[sort_key.as_str()]), a["id"].as_str());
-        let kb = (parse_time(&b[sort_key.as_str()]), b["id"].as_str());
-        if asc { ka.cmp(&kb) } else { kb.cmp(&ka) }
-    });
+    // Sort keys parsed once, not on every comparison (100,000-order runs).
+    let mut keyed: Vec<((Option<DateTime<Utc>>, Option<&str>), &Value)> =
+        found.into_iter().map(|o| ((parse_time(&o[sort_key.as_str()]), o["id"].as_str()), o)).collect();
+    keyed.sort_by(|a, b| if asc { a.0.cmp(&b.0) } else { b.0.cmp(&a.0) });
+    let found: Vec<&Value> = keyed.into_iter().map(|(_, o)| o).collect();
     let (orders, cursor) = page(&found, decode_cursor(body), limit as usize);
     let mut out = json!({ "orders": orders });
     if let Some(c) = cursor {

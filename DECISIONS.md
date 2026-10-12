@@ -149,7 +149,7 @@ None of these touches Square or the network.
 
 ## Packaging
 
-**2026-10-12 · The Windows installer embeds the WebView2 offline installer, as specified; the download is therefore well over "tens of megabytes".** The offline runtime installer alone is about 150 MB. The spec asks for both. The release workflow prints the real size. If Austin prefers a small download, Tauri's `embedBootstrapper` (about 2 MB) fetches WebView2 from Microsoft only on the rare PC that lacks it. Windows 11 always has it, and Windows 10 22H2 has had it since 2021. That is an installer-time download, not the app's. **Open question for Austin at Phase 6.**
+**2026-10-12 · The Windows installer embeds the WebView2 offline installer, as specified; the download is therefore well over "tens of megabytes".** The first release candidate measured **211 MB for the Windows installer** against **13 MB for the Mac disk image** (release run 38236686258); the WebView2 runtime is nearly all of it. The spec asks for both. The release workflow prints the real size. If Austin prefers a small download, Tauri's `embedBootstrapper` (about 2 MB) fetches WebView2 from Microsoft only on the rare PC that lacks it. Windows 11 always has it, and Windows 10 22H2 has had it since 2021. That is an installer-time download, not the app's. **Open question for Austin at Phase 6.**
 
 ## Labels (continued)
 
@@ -158,3 +158,28 @@ None of these touches Square or the network.
 ## Keychain
 
 **2026-10-12 · Upgrades keep keychain access only for signed builds.** macOS ties a keychain item to the app's code signature. With Developer ID signing, the signature's identity (team plus bundle id) is the same across versions, so a new version reads the connection silently. Ad-hoc-signed builds (CI, before the Apple secrets exist) differ with every build, so after reinstalling one, macOS would ask once. A background check never shows that prompt (`kSecUseAuthenticationUIFail`): it fails quietly, and the next window open asks. Signed releases avoid this entirely.
+
+## Tests and measurement
+
+**2026-10-12 · The generator was built by a separate agent that never saw `core/compute` or `core/sync`.** Its truth is an independent implementation of the rules in this file, so the property tests compare two implementations, not one with itself. It avoids a few ambiguous cases:
+- a sale at a location that doesn't carry the item;
+- presence changing after the first check;
+- two orders closing in the same millisecond;
+- sales within 3 days of the history start;
+- checks within 10 minutes of midnight.
+
+The app's behaviour in those cases is covered by the mock scenarios and the unit tests instead.
+
+**2026-10-12 · Speed is measured against a simulated office connection: 300 ms per request and 20 Mbit/s, with each order padded to about 2.5 KB.** The spec says "a normal office connection" without numbers. Square publishes no response times, so 300 ms per request (round trip plus server time) is a conservative guess, and the padding stands in for the taxes, tenders and amounts real orders carry. Each check runs in its own process, so the measured memory is the check's alone and excludes the mock's.
+
+## Known limits (additions to SPEC § Known limits)
+
+**2026-10-12 · On a Mac, dragging the app to the Trash can leave its entry in Login Items.** macOS has no uninstaller hook. With the app gone, nothing can run, but the entry may stay listed until macOS cleans it up or the owner removes it in System Settings → General → Login Items. The recovery card says to choose Settings → Disconnect Square first, which also removes the background check.
+
+**2026-10-12 · Square's point-of-sale app never shows labels** (Phase 0, from Square's docs); they show in the Square Dashboard only.
+
+**2026-10-12 · The catalog read begins exactly at Square's `latest_time` from the last read; orders keep the spec's one-day overlap.** At first every read overlapped by a day. The full-size benchmark (20,000 items, 300 ms per request, 20 Mbit/s) showed the cost: each check re-read every item touched in the last day, including the previous check's own label writes, which was 58 s of a 95 s daily check. A 2-minute overlap didn't help either, because it still covers a check's own writes, made in the minute before. Square documents `latest_time` as "when the associated product catalog was last updated", which is the incremental-sync pattern. If Square ever omits it (it is a beta field), the read starts two minutes before the newest `updated_at` seen; a mock scenario covers that path. Stock counts use a two-minute overlap. Orders keep a day, because offline POS sales reach Square late and the spec asks for it.
+
+**2026-10-12 · After writing labels, the check reads catalog changes once more.** This takes in its own writes and moves the checkpoint past them, so the next check reads only what changed afterwards. If this read fails, nothing is lost: the next check reads those changes instead.
+
+**2026-10-12 · Label writes go in batches of 1,000 objects (Square's maximum per batch), and fetches run 6 at a time, 100 ids each.** Square serializes writes per seller, but not reads. Square documents no maximum for one retrieve call, so 100 ids per call stays conservative.

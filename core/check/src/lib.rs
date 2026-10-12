@@ -69,6 +69,8 @@ pub struct Summary {
     pub labels_skipped: u32,
     /// Why labels weren't written, when they're on but couldn't be.
     pub label_problem: Option<String>,
+    /// Milliseconds per phase.
+    pub timings_ms: Vec<(String, u64)>,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -323,8 +325,13 @@ fn run_locked(cfg: &Config, deps: &Deps, cache: &mut Cache, log: &log::Log) -> O
         business_name: report.business_name.clone(),
         first_sync: report.first_sync,
         orders_read: report.orders_read,
+        timings_ms: report.timings_ms.clone(),
         ..Summary::default()
     };
+    log.line(&format!(
+        "synced: {} catalog objects, {} orders, {} stock counts; {:?} ms",
+        report.catalog_objects, report.orders_read, report.counts_read, report.timings_ms
+    ));
     if !settings.labels_on {
         return Outcome::Done(summary);
     }
@@ -339,10 +346,13 @@ fn run_locked(cfg: &Config, deps: &Deps, cache: &mut Cache, log: &log::Log) -> O
     }
     // 5. Recompute.
     let now = (deps.clock)();
+    let planning = std::time::Instant::now();
     let plans = match dsf_sync::label_plan(cache, &settings, now) {
         Ok(p) => p,
         Err(e) => return Outcome::Failed(e.to_string()),
     };
+    summary.timings_ms.push(("plan".into(), planning.elapsed().as_millis() as u64));
+    let writing = std::time::Instant::now();
     // 6. Write.
     let api = Api::new(&client, &tokens.access_token);
     let writer = Writer { api: &api, cache, app_id: &cfg.app_id, now };
@@ -355,6 +365,25 @@ fn run_locked(cfg: &Config, deps: &Deps, cache: &mut Cache, log: &log::Log) -> O
     summary.labels_written = run.written;
     summary.labels_unchanged = run.unchanged;
     summary.labels_skipped = run.skipped.len() as u32;
+    summary.timings_ms.push(("labels".into(), writing.elapsed().as_millis() as u64));
+    drop(writer);
+    if run.written > 0 {
+        // Take in this check's own writes now, so the next check reads only
+        // what changed after them. A failure here costs nothing: the next
+        // check reads them instead.
+        let refreshing = std::time::Instant::now();
+        let opts = dsf_sync::SyncOptions { now: (deps.clock)(), app_id: &cfg.app_id, progress: None };
+        if let Err(e) = dsf_sync::sync::refresh_catalog(cache, &api, &opts) {
+            log.line(&format!("catalog refresh after writing labels: {e}"));
+        }
+        summary.timings_ms.push(("catalog after labels".into(), refreshing.elapsed().as_millis() as u64));
+    }
+    log.line(&format!(
+        "labels: {} written, {} skipped; {:?} ms",
+        run.written,
+        run.skipped.len(),
+        summary.timings_ms
+    ));
     match result {
         Ok(()) => Outcome::Done(summary),
         Err(LabelError::Halted(name)) => {

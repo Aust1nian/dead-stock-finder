@@ -28,8 +28,9 @@ use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-/// Catalog objects per write (an item counts once plus once per variation).
-const BATCH_OBJECTS: usize = 400;
+/// Catalog objects per write (an item counts once plus once per variation):
+/// Square's maximum per batch.
+const BATCH_OBJECTS: usize = 1000;
 const ATTEMPTS: u32 = 3;
 
 #[derive(Debug, thiserror::Error)]

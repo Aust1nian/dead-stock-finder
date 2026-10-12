@@ -16,6 +16,8 @@ pub const CATALOG_PAGE: u32 = 1000;
 pub const INVENTORY_PAGE: u32 = 1000;
 /// BatchRetrieveCatalogObjects ids per call (items come with their variations).
 pub const RETRIEVE_PER_CALL: usize = 100;
+/// Retrieve calls in flight at once.
+pub const RETRIEVE_PARALLEL: usize = 6;
 
 /// One signed-in seller: the client and the current access token.
 pub struct Api<'a> {
@@ -178,15 +180,32 @@ impl<'a> Api<'a> {
         }
     }
 
-    /// BatchRetrieveCatalogObjects for up to [`RETRIEVE_PER_CALL`] ids: the
-    /// objects exactly as Square has them now, every field kept.
+    /// BatchRetrieveCatalogObjects: the objects exactly as Square has them
+    /// now, every field kept. [`RETRIEVE_PER_CALL`] ids per call, up to
+    /// [`RETRIEVE_PARALLEL`] calls at once (reads; Square serializes only
+    /// writes).
     pub fn retrieve(&self, ids: &[String]) -> Result<Vec<Value>, Error> {
+        let chunks: Vec<&[String]> = ids.chunks(RETRIEVE_PER_CALL).collect();
         let mut out = Vec::new();
-        for chunk in ids.chunks(RETRIEVE_PER_CALL) {
-            let body = json!({ "object_ids": chunk, "include_related_objects": false });
-            let mut page = self.post("/v2/catalog/batch-retrieve", &body)?;
-            if let Some(Value::Array(list)) = page.get_mut("objects").map(Value::take) {
-                out.extend(list);
+        for group in chunks.chunks(RETRIEVE_PARALLEL) {
+            let results: Vec<Result<Vec<Value>, Error>> = std::thread::scope(|scope| {
+                let handles: Vec<_> = group
+                    .iter()
+                    .map(|chunk| {
+                        scope.spawn(move || -> Result<Vec<Value>, Error> {
+                            let body = json!({ "object_ids": chunk, "include_related_objects": false });
+                            let mut page = self.post("/v2/catalog/batch-retrieve", &body)?;
+                            Ok(match page.get_mut("objects").map(Value::take) {
+                                Some(Value::Array(list)) => list,
+                                _ => Vec::new(),
+                            })
+                        })
+                    })
+                    .collect();
+                handles.into_iter().map(|h| h.join().expect("retrieve thread")).collect()
+            });
+            for r in results {
+                out.extend(r?);
             }
         }
         Ok(out)

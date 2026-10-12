@@ -489,3 +489,20 @@ fn walk(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
     }
     out
 }
+
+#[test]
+fn catalog_changes_are_read_without_latest_time_too() {
+    let h = Harness::new(base_seed(), Settings::default(), today());
+    h.mock.state().faults.omit_latest_time = true;
+    done(&h.check(Trigger::Manual));
+    expect_base(&h);
+    // A staff member restocks the never-sold item with a new variation.
+    h.mock.state().staff_edit("I3", |o| {
+        o["item_data"]["variations"].as_array_mut().unwrap().push(variation("V3b", "Large", 1200));
+    });
+    h.mock.state().add_orders([order("O-new", "L1", utc(2026, 10, 12, 18, 0), &[("V3b", "1")])]);
+    h.advance(Duration::hours(6));
+    done(&h.check(Trigger::Manual));
+    assert_eq!(h.label("I3").as_deref(), Some("Last sold Oct 12, 2026"));
+    assert_eq!(h.label("V3b").as_deref(), Some("Last sold Oct 12, 2026"));
+}

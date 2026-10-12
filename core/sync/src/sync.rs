@@ -62,16 +62,35 @@ pub struct SyncReport {
     pub orders_read: u64,
     pub counts_read: u64,
     pub business_name: String,
+    /// Milliseconds per phase, for the log and the speed tests.
+    pub timings_ms: Vec<(String, u64)>,
 }
 
-const OVERLAP: i64 = 1; // days
+/// Orders: one day, as the spec says, to catch orders closed or edited late
+/// (offline POS sales can reach Square days later; their updated_at is when
+/// Square received them, so a day covers indexing and clock differences).
+const ORDER_OVERLAP: Duration = Duration::days(1);
+/// Catalog: the next read begins exactly at Square's `latest_time` from the
+/// last one (the incremental-sync pattern Square designed it for). Without a
+/// `latest_time`, it begins two minutes before the newest `updated_at` seen,
+/// to cover search-index lag. Stock counts use the same two minutes.
+const CATALOG_OVERLAP: Duration = Duration::minutes(2);
 
 pub fn sync(cache: &mut Cache, api: &Api, opts: &SyncOptions) -> Result<SyncReport> {
     let mut report = SyncReport::default();
+    let mut t = std::time::Instant::now();
+    let mut lap = |report: &mut SyncReport, name: &str| {
+        report.timings_ms.push((name.to_string(), t.elapsed().as_millis() as u64));
+        t = std::time::Instant::now();
+    };
     sync_account(cache, api, &mut report)?;
+    lap(&mut report, "account");
     report.catalog_objects = sync_catalog(cache, api, opts)?;
+    lap(&mut report, "catalog");
     sync_orders(cache, api, opts, &mut report)?;
+    lap(&mut report, "orders");
     report.counts_read = sync_inventory(cache, api, opts)?;
+    lap(&mut report, "inventory");
     Ok(report)
 }
 
@@ -115,6 +134,12 @@ fn sync_account(cache: &mut Cache, api: &Api, report: &mut SyncReport) -> Result
     Ok(())
 }
 
+/// Reads catalog changes since the checkpoint again: run after writing
+/// labels, so the next check doesn't re-read this check's own writes.
+pub fn refresh_catalog(cache: &mut Cache, api: &Api, opts: &SyncOptions) -> Result<u64> {
+    sync_catalog(cache, api, opts)
+}
+
 fn sync_catalog(cache: &mut Cache, api: &Api, opts: &SyncOptions) -> Result<u64> {
     let checkpoint = cache.meta_time("catalog_checkpoint")?;
     let full = checkpoint.is_none();
@@ -124,11 +149,14 @@ fn sync_catalog(cache: &mut Cache, api: &Api, opts: &SyncOptions) -> Result<u64>
             begin_time: None,
             include_deleted: false,
         },
-        Some(t) => CatalogQuery {
-            object_types: vec!["ITEM", "ITEM_VARIATION", "CATEGORY", "CUSTOM_ATTRIBUTE_DEFINITION"],
-            begin_time: Some(ts(t - Duration::days(OVERLAP))),
-            include_deleted: true,
-        },
+        Some(t) => {
+            let exact = cache.meta("catalog_checkpoint_exact")?.as_deref() == Some("1");
+            CatalogQuery {
+                object_types: vec!["ITEM", "ITEM_VARIATION", "CATEGORY", "CUSTOM_ATTRIBUTE_DEFINITION"],
+                begin_time: Some(ts(if exact { t } else { t - CATALOG_OVERLAP })),
+                include_deleted: true,
+            }
+        }
     };
     let now = ts(opts.now);
     let mut seen_items: HashSet<String> = HashSet::new();
@@ -173,9 +201,12 @@ fn sync_catalog(cache: &mut Cache, api: &Api, opts: &SyncOptions) -> Result<u64>
             cache.set_meta("catalog_first_read_at", &now)?;
         }
     }
-    let next =
-        latest_time.as_deref().and_then(norm_ts).or(latest).or_else(|| checkpoint.map(ts)).unwrap_or(now);
+    let (next, exact) = match latest_time.as_deref().and_then(norm_ts) {
+        Some(t) => (t, true),
+        None => (latest.or_else(|| checkpoint.map(ts)).unwrap_or(now), false),
+    };
     cache.set_meta("catalog_checkpoint", &next)?;
+    cache.set_meta("catalog_checkpoint_exact", if exact { "1" } else { "0" })?;
     Ok(count)
 }
 
@@ -458,7 +489,7 @@ fn sync_orders(cache: &mut Cache, api: &Api, opts: &SyncOptions, report: &mut Sy
         .meta_time("order_checkpoint")?
         .or(cache.meta_time("history_start")?)
         .ok_or_else(|| SyncError::Data("order checkpoint missing".into()))?;
-    let window = OrderWindow::UpdatedSince { start: ts(checkpoint - Duration::days(OVERLAP)) };
+    let window = OrderWindow::UpdatedSince { start: ts(checkpoint - ORDER_OVERLAP) };
     let mut newest: Option<String> = None;
     api.search_orders(&locations, &window, |orders| -> Result<()> {
         let tx = cache.transaction()?;
@@ -560,7 +591,7 @@ fn sync_inventory(cache: &mut Cache, api: &Api, opts: &SyncOptions) -> Result<u6
     let last_full = cache.meta_time("inventory_full_at")?;
     let full = last_full.is_none_or(|t| opts.now - t > Duration::days(7));
     let checkpoint = cache.meta_time("inventory_checkpoint")?;
-    let after = if full { None } else { checkpoint.map(|c| ts(c - Duration::days(OVERLAP))) };
+    let after = if full { None } else { checkpoint.map(|c| ts(c - CATALOG_OVERLAP)) };
     let mut seen: HashSet<(String, String)> = HashSet::new();
     let mut newest: Option<String> = None;
     let mut read = 0u64;
