@@ -1,0 +1,22 @@
+[package]
+name = "dsf-sync"
+description = "SQLite cache, order checkpoint, catalog snapshot, and the report built from them."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+dsf-square.workspace = true
+dsf-compute.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+dsf-mock.workspace = true
+tempfile.workspace = true

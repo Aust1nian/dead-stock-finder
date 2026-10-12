@@ -1,0 +1,22 @@
+[package]
+name = "dsf-labels"
+description = "The Last sold attribute definition and the safe-write procedure."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+dsf-square.workspace = true
+dsf-sync.workspace = true
+dsf-compute.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+rusqlite.workspace = true
+thiserror.workspace = true
+getrandom = "0.4.3"
+
+[dev-dependencies]
+dsf-mock.workspace = true

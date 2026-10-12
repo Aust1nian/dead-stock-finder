@@ -1,0 +1,10 @@
+[package]
+name = "dsf-schedule"
+description = "Background triggers (macOS LaunchAgent, Windows Task Scheduler) and the single-instance lock."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]

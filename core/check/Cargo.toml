@@ -1,0 +1,10 @@
+[package]
+name = "dsf-check"
+description = "The check: lock, network wait, token refresh, sync, compute, labels, status."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]

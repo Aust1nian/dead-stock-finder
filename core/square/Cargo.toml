@@ -1,0 +1,41 @@
+[package]
+name = "dsf-square"
+description = "Square HTTP client with the host allowlist, OAuth PKCE, keychain token store, API calls."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[features]
+# Development builds only: allow connect.squareupsandbox.com. Release builds
+# of the app never enable it (tools/depcheck.py checks).
+sandbox = []
+
+[dependencies]
+# The app's one HTTP client. rustls with the ring provider; no proxy, no
+# redirects, no cookies (see http.rs).
+ureq = { version = "3.4.2", default-features = false, features = ["rustls", "gzip"] }
+rustls-native-certs = "0.8.4"
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+sha2 = "0.11.0"
+base64 = "0.23.1"
+getrandom = "0.4.3"
+url = "2.5.8"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = "3.7.0"
+security-framework-sys = { version = "2.17", default-features = false }
+core-foundation = "0.10"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security_Credentials"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+linux-keyutils = "0.2.5"
+
+[dev-dependencies]
+tempfile.workspace = true

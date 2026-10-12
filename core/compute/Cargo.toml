@@ -1,0 +1,13 @@
+[package]
+name = "dsf-compute"
+description = "Last-sold dates, slow flags and label text. Pure functions, no I/O."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+chrono.workspace = true
+chrono-tz.workspace = true
+serde.workspace = true

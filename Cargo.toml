@@ -1,0 +1,65 @@
+[workspace]
+resolver = "3"
+members = [
+    "core/square",
+    "core/sync",
+    "core/compute",
+    "core/labels",
+    "core/check",
+    "core/schedule",
+    "core/notify",
+    "mock",
+    "gen",
+    # "app/src-tauri",
+]
+# Everything but the Tauri shell builds and tests without system webview packages.
+default-members = [
+    "core/square",
+    "core/sync",
+    "core/compute",
+    "core/labels",
+    "core/check",
+    "core/schedule",
+    "core/notify",
+    "mock",
+    "gen",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "LicenseRef-Proprietary"
+publish = false
+rust-version = "1.95"
+
+[workspace.dependencies]
+dsf-square = { path = "core/square" }
+dsf-sync = { path = "core/sync" }
+dsf-compute = { path = "core/compute" }
+dsf-labels = { path = "core/labels" }
+dsf-check = { path = "core/check" }
+dsf-schedule = { path = "core/schedule" }
+dsf-notify = { path = "core/notify" }
+dsf-mock = { path = "mock" }
+dsf-gen = { path = "gen" }
+
+serde = { version = "1.0.229", features = ["derive"] }
+# preserve_order + arbitrary_precision: a catalog object sent back to Square
+# keeps every field, in order, with numbers exactly as Square wrote them.
+serde_json = { version = "1.0.154", features = ["preserve_order", "arbitrary_precision"] }
+chrono = { version = "0.4.45", default-features = false, features = ["std", "clock", "serde"] }
+chrono-tz = { version = "0.10.4", default-features = false, features = ["std"] }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+thiserror = "2.0.21"
+tempfile = "3.27.0"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = "debuginfo"
+panic = "unwind"
+
+# The generator and property tests run thousands of checks; keep them quick in
+# debug test builds too.
+[profile.dev.package."*"]
+opt-level = 2
