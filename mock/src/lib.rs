@@ -1163,7 +1163,8 @@ fn search_orders(s: &State, body: &Value) -> HttpResponse {
     let asc = body.pointer("/query/sort/sort_order").and_then(Value::as_str) == Some("ASC");
     let sort_key = sort_field.to_ascii_lowercase();
     // Sort keys parsed once, not on every comparison (100,000-order runs).
-    let mut keyed: Vec<((Option<DateTime<Utc>>, Option<&str>), &Value)> =
+    type Keyed<'a> = ((Option<DateTime<Utc>>, Option<&'a str>), &'a Value);
+    let mut keyed: Vec<Keyed> =
         found.into_iter().map(|o| ((parse_time(&o[sort_key.as_str()]), o["id"].as_str()), o)).collect();
     keyed.sort_by(|a, b| if asc { a.0.cmp(&b.0) } else { b.0.cmp(&a.0) });
     let found: Vec<&Value> = keyed.into_iter().map(|(_, o)| o).collect();
