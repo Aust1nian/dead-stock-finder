@@ -1,0 +1,11 @@
+{
+  "bundle": {
+    "macOS": {
+      "hardenedRuntime": true,
+      "files": {
+        "Library/LaunchAgents/com.tightline.deadstockfinder.signin.plist": "./macos/LaunchAgents/com.tightline.deadstockfinder.signin.plist",
+        "Library/LaunchAgents/com.tightline.deadstockfinder.daily.plist": "./macos/LaunchAgents/com.tightline.deadstockfinder.daily.plist"
+      }
+    }
+  }
+}

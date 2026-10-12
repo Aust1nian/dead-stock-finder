@@ -1,0 +1,38 @@
+[package]
+name = "dead-stock-finder"
+description = "Dead Stock Finder: finds items that haven't sold in Square and labels them."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+default-run = "dead-stock-finder"
+
+[features]
+# Development builds: allow Square's Sandbox (never in release builds).
+sandbox = ["dsf-square/sandbox"]
+# UI tests only: commands that save without the system dialog (never shipped).
+ui-test = []
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+dsf-square.workspace = true
+dsf-sync.workspace = true
+dsf-compute.workspace = true
+dsf-labels.workspace = true
+dsf-check.workspace = true
+dsf-schedule.workspace = true
+dsf-notify.workspace = true
+tauri = { version = "2", features = [] }
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+rusqlite.workspace = true
+# System open/save dialogs. GTK on Linux (development only), no XDG portal.
+rfd = { version = "0.17.2", default-features = false, features = ["gtk3"] }
+rust_xlsxwriter = { version = "0.99.1", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Console", "Win32_UI_WindowsAndMessaging", "Win32_System_Threading"] }

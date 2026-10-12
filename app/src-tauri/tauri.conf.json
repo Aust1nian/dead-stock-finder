@@ -1,0 +1,42 @@
+{
+  "productName": "Dead Stock Finder",
+  "mainBinaryName": "dead-stock-finder",
+  "version": "0.1.0",
+  "identifier": "com.tightline.deadstockfinder",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5174",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [],
+    "security": {
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' data:; style-src 'self'",
+      "freezePrototype": true
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg", "nsis", "deb"],
+    "publisher": "Tight Line",
+    "category": "Business",
+    "shortDescription": "Finds items that haven't sold in Square and labels them.",
+    "copyright": "© 2026 Tight Line",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    },
+    "windows": {
+      "webviewInstallMode": { "type": "offlineInstaller" },
+      "nsis": { "installMode": "currentUser" }
+    }
+  }
+}

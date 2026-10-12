@@ -1,0 +1,197 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  core:
+    name: core tests, mock scenarios, dependency check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2.9.2
+      - run: cargo fmt --all --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm, cache-dependency-path: app/package-lock.json }
+      - run: npm ci && npm run build
+        working-directory: app
+      - run: python3 tools/depcheck.py
+      - name: lint workflows
+        run: docker run --rm -v "$PWD":/repo -w /repo rhysd/actionlint:1.7.12 -no-color
+
+  build-macos:
+    name: build macOS universal app
+    runs-on: macos-15
+    env:
+      # Ad-hoc signature until the Developer ID secrets exist (release.yml).
+      APPLE_SIGNING_IDENTITY: "-"
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2.9.2
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm, cache-dependency-path: app/package-lock.json }
+      - run: npm ci
+        working-directory: app
+      - run: npx tauri build --target universal-apple-darwin --bundles app
+        working-directory: app
+      - name: universal binary and bundled LaunchAgents
+        run: |
+          app="target/universal-apple-darwin/release/bundle/macos/Dead Stock Finder.app"
+          lipo -archs "$app/Contents/MacOS/dead-stock-finder"
+          ls -l "$app/Contents/Library/LaunchAgents"
+          codesign -dv "$app" 2>&1 | head -5
+          ditto -c -k --keepParent "$app" dead-stock-finder-macos.zip
+          ls -l dead-stock-finder-macos.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos-app
+          path: dead-stock-finder-macos.zip
+          if-no-files-found: error
+
+  build-windows:
+    name: build Windows installer
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup show active-toolchain
+      - uses: Swatinem/rust-cache@v2.9.2
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm, cache-dependency-path: app/package-lock.json }
+      - run: npm ci
+        working-directory: app
+      - run: npx tauri build --bundles nsis
+        working-directory: app
+      - shell: pwsh
+        run: Get-ChildItem target/release/bundle/nsis | Format-Table Name, Length
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-nsis
+          path: target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+
+  linux-selftest:
+    name: self-test and allowlist trace (Linux)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev librsvg2-dev strace
+      - run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2.9.2
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm, cache-dependency-path: app/package-lock.json }
+      - run: npm ci && npm run build
+        working-directory: app
+      - run: cargo build --release -p dead-stock-finder --features tauri/custom-protocol
+      - run: cargo test --release -p dead-stock-finder --features tauri/custom-protocol
+      - name: self-test under strace (every connection must be the loopback mock)
+        run: tools/ci/allowlist-trace.sh target/release/dead-stock-finder selftest-linux.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: selftest-linux
+          path: |
+            selftest-linux.json
+            trace-connect.txt
+          if-no-files-found: warn
+
+  scheduler-macos:
+    name: scheduler test ${{ matrix.runner }}
+    needs: build-macos
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-26]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with: { name: macos-app, path: dist }
+      - run: tools/ci/scheduler-test-macos.sh dist/dead-stock-finder-macos.zip "$PWD/scheduler-${{ matrix.runner }}.json"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: scheduler-${{ matrix.runner }}
+          path: scheduler-*.json
+          if-no-files-found: warn
+
+  scheduler-windows:
+    name: scheduler test windows-2025
+    needs: build-windows
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with: { name: windows-nsis, path: dist }
+      - shell: pwsh
+        run: |
+          $setup = (Get-ChildItem dist -Filter *-setup.exe | Select-Object -First 1).FullName
+          tools/ci/scheduler-test-windows.ps1 -Installer $setup -Out (Join-Path $PWD "scheduler-windows-2025.json")
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: scheduler-windows-2025
+          path: scheduler-*.json
+          if-no-files-found: warn
+
+  selftest-macos:
+    name: self-test ${{ matrix.runner }} (network blocked but loopback)
+    needs: build-macos
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-26, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with: { name: macos-app, path: dist }
+      - run: |
+          ditto -x -k dist/dead-stock-finder-macos.zip "$RUNNER_TEMP/app"
+          exe="$RUNNER_TEMP/app/Dead Stock Finder.app/Contents/MacOS/dead-stock-finder"
+          # Only loopback is reachable: the mock server and nothing else.
+          sandbox-exec -p '(version 1)(allow default)(deny network-outbound)(allow network-outbound (remote ip "localhost:*"))' \
+            "$exe" --self-test --json-out "$PWD/selftest-${{ matrix.runner }}.json"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: selftest-${{ matrix.runner }}
+          path: selftest-*.json
+          if-no-files-found: warn
+
+  selftest-windows:
+    name: self-test ${{ matrix.runner }} (network blocked but loopback)
+    needs: build-windows
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-2025, windows-11-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with: { name: windows-nsis, path: dist }
+      - shell: pwsh
+        run: tools/ci/selftest-windows.ps1 -Installer (Get-ChildItem dist -Filter *-setup.exe | Select-Object -First 1).FullName -Out (Join-Path $PWD "selftest-${{ matrix.runner }}.json")
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: selftest-${{ matrix.runner }}
+          path: selftest-*.json
+          if-no-files-found: warn

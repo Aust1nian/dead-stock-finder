@@ -1,0 +1,6 @@
+{
+  "identifier": "main",
+  "description": "The one window. App commands only; no file-system, shell, HTTP or opener access from the page.",
+  "windows": ["main"],
+  "permissions": ["core:event:default"]
+}
