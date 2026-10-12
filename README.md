@@ -5,6 +5,7 @@ A free desktop app from Tight Line for Square sellers. It finds items that haven
 - Spec: [`SPEC.md`](SPEC.md)
 - Choices and deviations: [`DECISIONS.md`](DECISIONS.md)
 - Square facts checked in Phase 0: [`SQUARE_FACTS.md`](SQUARE_FACTS.md)
+- Test results: [`TEST_REPORT.md`](TEST_REPORT.md) · Releasing: [`RELEASE.md`](RELEASE.md) · Square setup for Austin: [`SQUARE_APP_SETUP.md`](SQUARE_APP_SETUP.md) · Field test: [`docs/FIELD_TEST.md`](docs/FIELD_TEST.md) · Recovery card: [`docs/RECOVERY_CARD.md`](docs/RECOVERY_CARD.md)
 
 | Folder | What's in it |
 |---|---|
@@ -19,12 +20,15 @@ A free desktop app from Tight Line for Square sellers. It finds items that haven
 | `mock/` | Local mock Square server |
 | `gen/` | Seeded generator of catalogs and sales histories with known answers |
 | `site/` | The download page |
-| `tools/` | Dependency check, CI scripts, Linux dev image |
+| `bench/` | Speed and memory benchmark (`dsf-perf`) and the Square Sandbox run (`dsf-sandbox`); development only |
+| `tools/` | Dependency check, CI and install-test scripts, UI tests, Linux dev image |
 
 ## Develop
 
 ```sh
-cargo test                                  # core, mock scenarios, generator
+cargo test                                  # unit, mock scenarios, 200 generator seeds
+DSF_SEEDS=0-1999 cargo test --release -p dsf-check --test properties   # the nightly tier
+cargo run --release -p dsf-bench --bin dsf-perf -- run                 # speed and memory targets
 python3 tools/depcheck.py                   # nothing but Square in the shipped tree
 tools/docker/run.sh "cd app && npm ci && npx tauri build --no-bundle"   # Linux build without system packages
 ```
