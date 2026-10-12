@@ -1,6 +1,6 @@
 [package]
 name = "dsf-notify"
-description = "System notifications."
+description = "System notifications, shown only when the owner must act."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,3 +8,13 @@ publish.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.5"
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSString", "NSError", "NSBundle"] }
+objc2-user-notifications = { version = "0.3.2", default-features = false, features = ["std", "block2", "UNUserNotificationCenter", "UNNotificationContent", "UNNotificationRequest", "UNNotificationTrigger", "UNNotificationSettings"] }
+block2 = "0.6.2"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = ["UI_Notifications", "Data_Xml_Dom"] }
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Registry"] }

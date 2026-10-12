@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.tightline.deadstockfinder.signin</string>
+	<key>BundleProgram</key>
+	<string>Contents/MacOS/dead-stock-finder</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>Contents/MacOS/dead-stock-finder</string>
+		<string>--check</string>
+		<string>--trigger</string>
+		<string>signin</string>
+	</array>
+	<key>AssociatedBundleIdentifiers</key>
+	<string>com.tightline.deadstockfinder</string>
+	<key>LimitLoadToSessionType</key>
+	<string>Aqua</string>
+	<key>ProcessType</key>
+	<string>Background</string>
+	<key>RunAtLoad</key>
+	<true/>
+</dict>
+</plist>
