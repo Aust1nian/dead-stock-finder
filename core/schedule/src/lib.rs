@@ -28,8 +28,14 @@ use serde::{Deserialize, Serialize};
 
 pub const SIGNIN_LABEL: &str = "com.tightline.deadstockfinder.signin";
 pub const DAILY_LABEL: &str = "com.tightline.deadstockfinder.daily";
-pub const TASK_FOLDER: &str = "Dead Stock Finder";
-pub const TASK_NAME: &str = "\\Dead Stock Finder\\Check";
+/// The task sits in Task Scheduler's root, named for the Windows user:
+/// standard users may create tasks there but not new folders, and two
+/// people on one PC each get their own.
+pub fn task_name(user: &str) -> String {
+    let clean: String =
+        user.chars().filter(|c| !matches!(c, '\\' | '/' | ':' | '*' | '?' | '"' | '<' | '>' | '|')).collect();
+    format!("\\Dead Stock Finder check ({clean})")
+}
 pub const RUN_VALUE: &str = "DeadStockFinderCheck";
 pub const TICK_MINUTES: [u32; 4] = [0, 15, 30, 45];
 
@@ -216,6 +222,7 @@ pub const BUNDLE_PROGRAM: &str = "Contents/MacOS/dead-stock-finder";
 
 /// The Windows task definition (Task Scheduler XML).
 pub fn task_xml(user: &str, exe: &str, check_time: (u8, u8), with_logon: bool) -> String {
+    let name = task_name(user.rsplit('\\').next().unwrap_or(user));
     let logon = if with_logon {
         format!(
             "    <LogonTrigger>\n      <Enabled>true</Enabled>\n      <UserId>{}</UserId>\n    </LogonTrigger>\n",
@@ -272,7 +279,7 @@ pub fn task_xml(user: &str, exe: &str, check_time: (u8, u8), with_logon: bool) -
   </Actions>
 </Task>
 "#,
-        name = TASK_NAME,
+        name = xml_escape(&name),
         h = check_time.0,
         m = check_time.1,
         user = xml_escape(user),
@@ -439,8 +446,8 @@ mod os {
     use std::os::windows::process::CommandExt;
     use std::process::Command;
     use windows_sys::Win32::System::Registry::{
-        HKEY, HKEY_CURRENT_USER, KEY_READ, KEY_WRITE, REG_SZ, RegCloseKey, RegDeleteValueW, RegOpenKeyExW,
-        RegQueryValueExW, RegSetValueExW,
+        HKEY, HKEY_CURRENT_USER, KEY_READ, KEY_WRITE, REG_OPTION_NON_VOLATILE, REG_SZ, RegCloseKey,
+        RegCreateKeyExW, RegDeleteValueW, RegOpenKeyExW, RegQueryValueExW, RegSetValueExW,
     };
 
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -460,6 +467,10 @@ mod os {
         if domain.is_empty() { name } else { format!("{domain}\\{name}") }
     }
 
+    fn name() -> String {
+        task_name(&std::env::var("USERNAME").unwrap_or_default())
+    }
+
     fn create_task(exe: &str, check_time: (u8, u8), with_logon: bool) -> Result<(), String> {
         let xml = task_xml(&user(), exe, check_time, with_logon);
         let mut bytes: Vec<u8> = vec![0xFF, 0xFE];
@@ -468,7 +479,7 @@ mod os {
         }
         let path = std::env::temp_dir().join(format!("dead-stock-finder-task-{}.xml", std::process::id()));
         std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
-        let out = schtasks(&["/Create", "/TN", TASK_NAME, "/XML", &path.to_string_lossy(), "/F"]);
+        let out = schtasks(&["/Create", "/TN", &name(), "/XML", &path.to_string_lossy(), "/F"]);
         let _ = std::fs::remove_file(&path);
         let out = out.map_err(|e| e.to_string())?;
         if out.status.success() {
@@ -485,7 +496,20 @@ mod os {
     fn set_run_key(exe: &str) -> Result<(), String> {
         let key_path = wide(RUN_KEY);
         let mut key: HKEY = std::ptr::null_mut();
-        let ok = unsafe { RegOpenKeyExW(HKEY_CURRENT_USER, key_path.as_ptr(), 0, KEY_WRITE, &mut key) };
+        // A new Windows user may not have a Run key yet.
+        let ok = unsafe {
+            RegCreateKeyExW(
+                HKEY_CURRENT_USER,
+                key_path.as_ptr(),
+                0,
+                std::ptr::null(),
+                REG_OPTION_NON_VOLATILE,
+                KEY_WRITE,
+                std::ptr::null(),
+                &mut key,
+                std::ptr::null_mut(),
+            )
+        };
         if ok != 0 {
             return Err(format!("open Run key: {ok}"));
         }
@@ -546,19 +570,25 @@ mod os {
                 delete_run_key();
                 Ok(Registration {
                     method: Method::TaskScheduler,
-                    detail: format!("task {TASK_NAME}: sign-in and daily"),
+                    detail: format!("task {}: sign-in and daily", name()),
                 })
             }
             Err(full) => match create_task(&exe, check_time, false) {
                 Ok(()) => {
-                    set_run_key(&exe).map_err(ScheduleError::Failed)?;
+                    set_run_key(&exe).map_err(|e| {
+                        ScheduleError::Failed(format!("sign-in trigger: {full}; Run entry: {e}"))
+                    })?;
                     Ok(Registration {
                         method: Method::TaskSchedulerDailyAndRunKey,
                         detail: format!("sign-in trigger refused ({full}); daily task plus Run entry"),
                     })
                 }
                 Err(daily) => {
-                    set_run_key(&exe).map_err(ScheduleError::Failed)?;
+                    set_run_key(&exe).map_err(|e| {
+                        ScheduleError::Failed(format!(
+                            "task with sign-in: {full}; daily task: {daily}; Run entry: {e}"
+                        ))
+                    })?;
                     Ok(Registration {
                         method: Method::RunKeyOnly,
                         detail: format!("task refused ({daily}); Run entry only, daily check at sign-in"),
@@ -569,20 +599,19 @@ mod os {
     }
 
     pub fn unregister() -> Result<(), ScheduleError> {
-        let _ = schtasks(&["/Delete", "/TN", TASK_NAME, "/F"]);
-        let _ = schtasks(&["/Delete", "/TN", &format!("\\{TASK_FOLDER}"), "/F"]);
+        let _ = schtasks(&["/Delete", "/TN", &name(), "/F"]);
         delete_run_key();
         Ok(())
     }
 
     pub fn status() -> Registration {
-        let task = schtasks(&["/Query", "/TN", TASK_NAME, "/XML"]).ok().filter(|o| o.status.success());
+        let task = schtasks(&["/Query", "/TN", &name(), "/XML"]).ok().filter(|o| o.status.success());
         let run = run_key_present();
         match (task, run) {
             (Some(out), false) => {
                 let xml = String::from_utf8_lossy(&out.stdout).to_string();
                 let detail = if xml.contains("LogonTrigger") { "sign-in and daily" } else { "daily only" };
-                Registration { method: Method::TaskScheduler, detail: format!("task {TASK_NAME}: {detail}") }
+                Registration { method: Method::TaskScheduler, detail: format!("task {}: {detail}", name()) }
             }
             (Some(_), true) => Registration {
                 method: Method::TaskSchedulerDailyAndRunKey,
@@ -730,6 +759,8 @@ mod tests {
         assert!(xml.contains("<StartWhenAvailable>true</StartWhenAvailable>"));
         assert!(xml.contains("<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>"));
         assert!(xml.contains("<ExecutionTimeLimit>PT10M</ExecutionTimeLimit>"));
+        assert!(xml.contains("<URI>\\Dead Stock Finder check (owner)</URI>"));
         assert!(!task_xml("u", "e", (5, 0), false).contains("LogonTrigger"));
+        assert_eq!(task_name("a/b:c"), "\\Dead Stock Finder check (abc)");
     }
 }

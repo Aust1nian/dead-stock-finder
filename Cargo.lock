@@ -556,6 +556,7 @@ dependencies = [
  "dsf-check",
  "dsf-compute",
  "dsf-labels",
+ "dsf-mock",
  "dsf-notify",
  "dsf-schedule",
  "dsf-square",
@@ -567,6 +568,7 @@ dependencies = [
  "serde_json",
  "tauri",
  "tauri-build",
+ "url",
  "windows-sys 0.61.2",
 ]
 
@@ -774,6 +776,13 @@ dependencies = [
 [[package]]
 name = "dsf-gen"
 version = "0.1.0"
+dependencies = [
+ "chrono",
+ "chrono-tz",
+ "dsf-mock",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "dsf-labels"
@@ -862,10 +871,12 @@ dependencies = [
  "dsf-mock",
  "dsf-square",
  "rusqlite",
+ "rust_xlsxwriter",
  "serde",
  "serde_json",
  "tempfile",
  "thiserror 2.0.21",
+ "zip",
 ]
 
 [[package]]

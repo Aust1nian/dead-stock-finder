@@ -106,3 +106,47 @@ A computer clock that runs fast or slow can't make the app skip orders.
 **2026-10-12 · Items and variations carried at none of the selected locations get no label**, and a label this app wrote earlier is removed. Archived items are skipped and left as they are.
 
 **2026-10-12 · The label key is `dead_stock_last_sold`.** It can never change once sellers have labels: a new key would leave every old value behind.
+
+## CI runners
+
+**2026-10-12 · The gating Mac runner is `macos-15`, not `macos-14`.** GitHub deprecated `macos-14` on 2026-07-06, runs brownouts from today (Oct 12), and retires it on 2026-11-02. `macos-15` is the same M1 3-core runner one macOS version later. `macos-26` and `macos-15-intel` are as specified. `ubuntu-latest` is pinned to `ubuntu-24.04`, because `ubuntu-latest` moves to 26.04 during Oct–Nov 2026.
+
+**2026-10-12 · macOS scheduler tests run as the runner's own user.** On a hosted Mac, only the logged-in console user has the GUI (Aqua) session that LaunchAgents load into, and that user is an administrator. The test installs into `~/Applications` and registers through the app itself; nothing in the app or the test asks for admin rights. `sudo` is used only to read the Login Items database (`sfltool dumpbtm`) as evidence. On Windows, a separate standard user also registers its own task, which proves registration needs no admin.
+
+## The headless check and scheduling
+
+**2026-10-12 · macOS uses two bundled LaunchAgents.** A sign-in agent runs at load. A daily agent fires every 15 minutes, and the check runs only when the owner's daily time has passed since the last check. The plists ship inside the signed bundle (SMAppService), so they can't be rewritten when the owner changes the time; a tick plus a due-check keeps the time adjustable. A missed time runs on wake, because launchd coalesces calendar events missed during sleep. The daily-time choice moves in 15-minute steps. After a failed attempt, ticks retry at most every two hours until one succeeds.
+
+**2026-10-12 · The Windows task lives in Task Scheduler's root, named "Dead Stock Finder check (<user>)".** CI showed that a standard user could not create the task under a new "\Dead Stock Finder\" folder. Standard users may create tasks at the root, and the per-user name keeps two people on one PC apart. Every failed path is reported in the error, so a refusal can be diagnosed.
+
+**2026-10-12 · The Run-key fallback creates the per-user Run key when it is missing.** A new Windows user may not have one yet.
+
+**2026-10-12 · "3 failed checks in a row" means three failed checks spanning three calendar days.** The notification text is "Checks have failed 3 days in a row", and a laptop that fails three sign-in checks within an hour shouldn't be told that. The owner is notified once per streak. Reconnect, labels stopped, and missing label permission each notify once until resolved.
+
+**2026-10-12 · Test-only command-line flags in the shipped app.**
+- `--hold-lock <seconds>` holds the check lock, so the scheduler tests can prove an overlapping run steps aside.
+- `--test-mark-setup` marks setup done without connecting, so a background check can be seen running; it ends "not connected".
+- `--schedule register|unregister|status|restore` registers, removes, reports or restores the background check.
+- `--uninstall [--remove-data]` is run by the Windows uninstaller.
+
+None of these touches Square or the network.
+
+**2026-10-12 · Upgrades keep the background check.** The Windows installer's post-install hook runs `--schedule restore`, which re-registers only if the owner had background checks on. Tauri's uninstaller runs in update mode during an upgrade, and the pre-uninstall hook skips everything then. When the owner ticks Tauri's "Delete the application data" box, the Square connection is also removed from Credential Manager.
+
+## The window
+
+**2026-10-12 · Help is an in-window menu (Check this computer, Save diagnostics, About), not the system menu bar.** It looks the same on Mac and Windows, and WebDriver can test it.
+
+**2026-10-12 · The first connection asks for `ITEMS_WRITE`, because labels default to on.** The first screen is one sentence and one button, as specified, so it can't ask about labels first. If the owner turns labels off during setup, the app never uses write access. Disconnecting and reconnecting with labels off drops it.
+
+**2026-10-12 · Remove all labels turns labels off afterwards.** Otherwise the next daily check would write them all back. Disconnect deletes the token, removes the background check, and returns to the first screen with the Square Dashboard instructions.
+
+**2026-10-12 · Changing the window, locations or labels in Settings runs a check right away,** so labels in Square match the new choice without waiting for 5 a.m.
+
+**2026-10-12 · The report's own window filter is separate from the label setting.** The owner can look at 30 days without rewriting labels made for 90.
+
+**2026-10-12 · `--self-test` is headless.** It runs a full check against bundled data on a loopback mock in a temporary folder, plus a keychain round trip on a separate entry. The window is exercised by the UI tests. Help → Check this computer runs the same self-test and shows the steps. On Linux (development only), a missing kernel keyring counts as skipped, because containers block it.
+
+## Packaging
+
+**2026-10-12 · The Windows installer embeds the WebView2 offline installer, as specified; the download is therefore well over "tens of megabytes".** The offline runtime installer alone is about 150 MB. The spec asks for both. The release workflow prints the real size. If Austin prefers a small download, Tauri's `embedBootstrapper` (about 2 MB) fetches WebView2 from Microsoft only on the rare PC that lacks it. Windows 11 always has it, and Windows 10 22H2 has had it since 2021. That is an installer-time download, not the app's. **Open question for Austin at Phase 6.**

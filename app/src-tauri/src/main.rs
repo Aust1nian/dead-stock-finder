@@ -2,7 +2,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod cli;
+mod commands;
 mod config;
+mod demo;
 mod headless;
 mod window;
 

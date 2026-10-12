@@ -14,6 +14,7 @@
 //!    the owner must act, or after checks have failed 3 days running.
 //! 8. Exit.
 
+pub mod diagnostics;
 pub mod log;
 pub mod paths;
 pub mod selftest;

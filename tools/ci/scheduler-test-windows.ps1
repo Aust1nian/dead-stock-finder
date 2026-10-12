@@ -19,7 +19,7 @@ function Check([string]$Name, [string]$Status, [string]$Detail) {
   if ($Status -eq "fail") { $script:failed = $true }
 }
 
-$task = "\Dead Stock Finder\Check"
+$task = "\Dead Stock Finder check ($env:USERNAME)"
 $data = Join-Path $env:LOCALAPPDATA "com.tightline.deadstockfinder"
 $log = Join-Path $data "logs\check.log"
 Remove-Item $data -Recurse -Force -ErrorAction SilentlyContinue
@@ -57,7 +57,8 @@ Check "register" $(if ($code -eq 0 -and $reg -match '"task_scheduler"') { "pass"
 
 # 3. Read it back.
 $xml = (schtasks /query /tn $task /xml) -join "`n"
-$ok = ($xml -match "<LogonTrigger>") -and ($xml -match "<CalendarTrigger>") -and ($xml -match "InteractiveToken") -and ($xml -match "LeastPrivilege") -and ($xml -match "--check --trigger scheduled")
+# RunLevel is left out when it is the default, least privilege.
+$ok = ($xml -match "<LogonTrigger>") -and ($xml -match "<CalendarTrigger>") -and ($xml -match "InteractiveToken") -and ($xml -notmatch "HighestAvailable") -and ($xml -match "--check --trigger scheduled")
 Check "schtasks-query" $(if ($ok) { "pass" } else { "fail" }) (($xml -split "`n" | Select-String -Pattern "Trigger>|UserId|LogonType|RunLevel|StartBoundary|Arguments|ExecutionTimeLimit|StartWhenAvailable") -join " ")
 
 # 4. Fire it.
@@ -120,7 +121,10 @@ for ($i = 0; $i -lt 180 -and -not (Test-Path "$work\user-groups.txt"); $i++) { S
 $userReg = Get-Content "$work\user-register.json" -Raw -ErrorAction SilentlyContinue
 $elevated = (Get-Content "$work\user-groups.txt" -Raw -ErrorAction SilentlyContinue) -match "S-1-5-32-544.*Enabled group"
 Check "standard-user" $(if ($isAdmin -or $elevated) { "fail" } else { "pass" }) "$user, not in Administrators"
-Check "standard-user-register" $(if ($userReg -match '"task_scheduler"|"task_scheduler_daily_and_run_key"|"run_key_only"') { "pass" } else { "fail" }) "$userReg"
+Check "standard-user-register" $(if ($userReg -match '"task_scheduler"') { "pass" } elseif ($userReg -match '"task_scheduler_daily_and_run_key"|"run_key_only"') { "info" } else { "fail" }) "$userReg"
+$userXml = (schtasks /query /tn "\Dead Stock Finder check ($user)" /xml 2>$null) -join "`n"
+Check "standard-user-task" $(if ($userXml -match "<LogonTrigger>" -and $userXml -match "<CalendarTrigger>") { "pass" } else { "info" }) (($userXml -split "`n" | Select-String -Pattern "Trigger>|UserId|LogonType") -join " ")
+schtasks /delete /tn "\Dead Stock Finder check ($user)" /f 2>$null | Out-Null
 schtasks /delete /tn "dsf-as-user" /f | Out-Null
 
 # 7. Unregister, then uninstall; nothing of the schedule is left.

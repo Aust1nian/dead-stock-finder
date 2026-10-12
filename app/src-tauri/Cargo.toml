@@ -25,6 +25,8 @@ dsf-labels.workspace = true
 dsf-check.workspace = true
 dsf-schedule.workspace = true
 dsf-notify.workspace = true
+dsf-mock.workspace = true
+url = "2.5.8"
 tauri = { version = "2", features = [] }
 serde.workspace = true
 serde_json.workspace = true
@@ -35,4 +37,4 @@ rfd = { version = "0.17.2", default-features = false, features = ["gtk3"] }
 rust_xlsxwriter = { version = "0.99.1", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Console", "Win32_UI_WindowsAndMessaging", "Win32_System_Threading"] }
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Console", "Win32_UI_WindowsAndMessaging", "Win32_UI_Shell", "Win32_System_Threading"] }

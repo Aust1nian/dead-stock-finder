@@ -245,7 +245,7 @@ mod os {
 #[cfg(target_os = "linux")]
 mod os {
     use super::*;
-    use linux_keyutils::{KeyError, KeyRing, KeyRingIdentifier};
+    use linux_keyutils::{KeyError, KeyPermissionsBuilder, KeyRing, KeyRingIdentifier, Permission};
 
     fn description(k: &OsKeychain) -> String {
         format!("{}:{}", k.service, k.account)
@@ -264,10 +264,13 @@ mod os {
     }
 
     pub fn save(k: &OsKeychain, tokens: &Tokens) -> Result<(), StoreError> {
-        ring()?
+        let key = ring()?
             .add_key(&description(k), &encode(tokens))
-            .map(|_| ())
-            .map_err(|e| StoreError::Os(format!("{e:?}")))
+            .map_err(|e| StoreError::Os(format!("{e:?}")))?;
+        // The user, not only the possessing session, may find and read it,
+        // so a later process in a new session can load it.
+        let perms = KeyPermissionsBuilder::builder().posessor(Permission::ALL).user(Permission::ALL).build();
+        key.set_perms(perms).map_err(|e| StoreError::Os(format!("{e:?}")))
     }
 
     pub fn delete(k: &OsKeychain) -> Result<(), StoreError> {

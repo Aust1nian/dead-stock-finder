@@ -2,6 +2,7 @@
 //! date, and what is computed from it: labels to write and the report.
 
 pub mod cache;
+pub mod export;
 pub mod plan;
 pub mod report;
 pub mod sync;
