@@ -1,0 +1,73 @@
+name: nightly
+
+# The longer tiers (spec § Tests): 2,000 generator seeds, the speed and
+# memory targets on a simulated office connection, and the Square Sandbox
+# run once its secrets exist.
+
+on:
+  schedule:
+    - cron: "17 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  seeds:
+    name: 2,000 generator seeds
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2.9.2
+      - run: cargo test --release -p dsf-check --test properties
+        env:
+          DSF_SEEDS: "0-1999"
+
+  perf:
+    name: speed and memory (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2.9.2
+      # A normal office connection: 300 ms per request, 20 Mbit/s.
+      - run: cargo run --release -p dsf-bench --bin dsf-perf -- run --items 20000 --orders 100000 --latency-ms 300 --mbps 20 --out "perf-${{ matrix.runner }}.json"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: perf-${{ matrix.runner }}
+          path: perf-*.json
+          if-no-files-found: warn
+
+  sandbox:
+    name: Square Sandbox
+    runs-on: ubuntu-24.04
+    env:
+      HAS_SANDBOX: ${{ secrets.SQUARE_SANDBOX_TOKEN != '' && 'yes' || '' }}
+    steps:
+      - uses: actions/checkout@v7
+        if: env.HAS_SANDBOX == 'yes'
+      - if: env.HAS_SANDBOX == 'yes'
+        run: rustup show active-toolchain || rustup toolchain install
+      - if: env.HAS_SANDBOX == 'yes'
+        run: cargo run --release -p dsf-bench --features sandbox --bin dsf-sandbox -- --out sandbox.json
+        env:
+          SQUARE_SANDBOX_TOKEN: ${{ secrets.SQUARE_SANDBOX_TOKEN }}
+          SQUARE_SANDBOX_APP_ID: ${{ secrets.SQUARE_SANDBOX_APP_ID }}
+      - if: env.HAS_SANDBOX != 'yes'
+        run: echo "No Square Sandbox token yet (SQUARE_APP_SETUP.md); skipped."
+      - uses: actions/upload-artifact@v7
+        if: always() && env.HAS_SANDBOX == 'yes'
+        with:
+          name: sandbox
+          path: sandbox.json
+          if-no-files-found: warn

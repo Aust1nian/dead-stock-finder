@@ -150,3 +150,11 @@ None of these touches Square or the network.
 ## Packaging
 
 **2026-10-12 · The Windows installer embeds the WebView2 offline installer, as specified; the download is therefore well over "tens of megabytes".** The offline runtime installer alone is about 150 MB. The spec asks for both. The release workflow prints the real size. If Austin prefers a small download, Tauri's `embedBootstrapper` (about 2 MB) fetches WebView2 from Microsoft only on the rare PC that lacks it. Windows 11 always has it, and Windows 10 22H2 has had it since 2021. That is an installer-time download, not the app's. **Open question for Austin at Phase 6.**
+
+## Labels (continued)
+
+**2026-10-12 · The read-back compares everything outside this app's key exactly, and only the label text inside it.** If Square stored its own bookkeeping in the app's value (a definition id, a type) and dropped the `name` sent with it, a byte-for-byte comparison would stop all writes on the very first label. That would be a false alarm. Any change outside the app's key still stops writes, including the seller's own `Square:` values.
+
+## Keychain
+
+**2026-10-12 · Upgrades keep keychain access only for signed builds.** macOS ties a keychain item to the app's code signature. With Developer ID signing, the signature's identity (team plus bundle id) is the same across versions, so a new version reads the connection silently. Ad-hoc-signed builds (CI, before the Apple secrets exist) differ with every build, so after reinstalling one, macOS would ask once. A background check never shows that prompt (`kSecUseAuthenticationUIFail`): it fails quietly, and the next window open asks. Signed releases avoid this entirely.

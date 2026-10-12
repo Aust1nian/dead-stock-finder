@@ -74,6 +74,10 @@ pub struct Faults {
     pub reject_square_keys: bool,
     /// Creating another seller-visible definition fails (10 already exist).
     pub definition_limit_reached: bool,
+    /// A simulated connection: every answer waits this long, plus its size
+    /// at this many bytes per second (0 = unlimited).
+    pub latency: std::time::Duration,
+    pub bytes_per_second: u64,
 }
 
 #[derive(Clone, Debug)]
@@ -228,6 +232,11 @@ impl State {
     /// Adds or replaces a top-level object (stamping it), outside any request.
     pub fn put_object(&mut self, object: Value) {
         self.store(object);
+    }
+
+    /// Deletes a catalog object, as the seller would in the Dashboard.
+    pub fn delete_object(&mut self, id: &str) {
+        self.delete(id);
     }
 
     /// Adds orders (e.g. sales made since the last check).
@@ -501,6 +510,15 @@ fn handle(state: &Arc<Mutex<State>>, req: HttpRequest) -> Reply {
         body,
         status,
     });
+    let mut wait = s.faults.latency;
+    if s.faults.bytes_per_second > 0 {
+        wait +=
+            std::time::Duration::from_secs_f64(reply.body.len() as f64 / s.faults.bytes_per_second as f64);
+    }
+    drop(s);
+    if !wait.is_zero() {
+        std::thread::sleep(wait);
+    }
     Reply::Respond(reply)
 }
 

@@ -1,0 +1,37 @@
+[package]
+name = "dsf-bench"
+description = "Speed and memory against the spec's targets (development only)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "dsf-perf"
+path = "src/main.rs"
+
+[dependencies]
+dsf-gen.workspace = true
+dsf-mock.workspace = true
+dsf-check.workspace = true
+dsf-sync.workspace = true
+dsf-square.workspace = true
+dsf-compute.workspace = true
+dsf-notify.workspace = true
+dsf-schedule.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+
+dsf-labels.workspace = true
+getrandom = "0.4.3"
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+libc = "0.2"
+
+[features]
+sandbox = ["dsf-square/sandbox"]
+
+[[bin]]
+name = "dsf-sandbox"
+path = "src/sandbox_main.rs"

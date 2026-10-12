@@ -105,10 +105,33 @@ pub fn only_label_changed(fetched: &Value, outgoing: &Value) -> Result<(), Vec<S
 
 /// Step 5: what Square stored is what was sent, apart from the version and
 /// timestamp every write changes.
+///
+/// Outside this app's key everything must match exactly. Inside it, only the
+/// label text is compared: Square may keep its own bookkeeping in the value
+/// (definition id, type), and that is no change to the seller's catalog.
 pub fn stored_as_sent(sent: &Value, stored: &Value) -> Result<(), Vec<String>> {
-    let a = without_write_stamps(sent);
-    let b = without_write_stamps(stored);
-    if a == b { Ok(()) } else { Err(differences(&a, &b)) }
+    let a = without_write_stamps(&without_label(sent));
+    let b = without_write_stamps(&without_label(stored));
+    let mut problems = if a == b { Vec::new() } else { differences(&a, &b) };
+    let text = |o: &Value| o.pointer(&format!("/custom_attribute_values/{LABEL_KEY}/string_value")).cloned();
+    if text(sent) != text(stored) {
+        problems.push(format!("/custom_attribute_values/{LABEL_KEY}/string_value"));
+    }
+    let variations = |o: &Value| -> Vec<(Value, Option<Value>)> {
+        o.pointer("/item_data/variations")
+            .and_then(Value::as_array)
+            .map(|vs| vs.iter().map(|v| (v["id"].clone(), text(v))).collect())
+            .unwrap_or_default()
+    };
+    for ((id, mine), (_, theirs)) in variations(sent).iter().zip(variations(stored).iter()) {
+        if mine != theirs {
+            problems.push(format!(
+                "/item_data/variations/{}/custom_attribute_values/{LABEL_KEY}/string_value",
+                id.as_str().unwrap_or("?")
+            ));
+        }
+    }
+    if problems.is_empty() { Ok(()) } else { Err(problems) }
 }
 
 #[cfg(test)]
@@ -171,6 +194,20 @@ mod tests {
         // arbitrary_precision: 1.50 stays 1.50 through a round trip.
         let v: Value = serde_json::from_str(r#"{"q": 1.50, "big": 12345678901234567890}"#).unwrap();
         assert_eq!(serde_json::to_string(&v).unwrap(), r#"{"q":1.50,"big":12345678901234567890}"#);
+    }
+
+    #[test]
+    fn stored_tolerates_squares_bookkeeping_in_our_value_only() {
+        let mut sent = item();
+        sent["custom_attribute_values"][LABEL_KEY] = json!({ "name": "Last sold", "string_value": "Last sold Jul 14, 2026", "key": LABEL_KEY, "type": "STRING" });
+        let mut stored = sent.clone();
+        stored["custom_attribute_values"][LABEL_KEY] = json!({ "string_value": "Last sold Jul 14, 2026", "custom_attribute_definition_id": "DEF1", "type": "STRING" });
+        assert!(stored_as_sent(&sent, &stored).is_ok());
+        stored["custom_attribute_values"][LABEL_KEY]["string_value"] = json!("something else");
+        assert!(stored_as_sent(&sent, &stored).is_err());
+        let mut stored = sent.clone();
+        stored["custom_attribute_values"]["Square:abc"]["string_value"] = json!("changed");
+        assert!(stored_as_sent(&sent, &stored).is_err(), "the seller's own value is not ours to ignore");
     }
 
     #[test]

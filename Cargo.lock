@@ -746,11 +746,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "dsf-bench"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "dsf-check",
+ "dsf-compute",
+ "dsf-gen",
+ "dsf-labels",
+ "dsf-mock",
+ "dsf-notify",
+ "dsf-schedule",
+ "dsf-square",
+ "dsf-sync",
+ "getrandom 0.4.3",
+ "libc",
+ "serde_json",
+]
+
+[[package]]
 name = "dsf-check"
 version = "0.1.0"
 dependencies = [
  "chrono",
  "dsf-compute",
+ "dsf-gen",
  "dsf-labels",
  "dsf-mock",
  "dsf-notify",
@@ -780,7 +800,6 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "dsf-mock",
- "serde",
  "serde_json",
 ]
 

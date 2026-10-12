@@ -1,0 +1,224 @@
+name: release
+
+# Release candidates: the disk image and installer exactly as owners
+# download them, signed when the secrets exist (unsigned until then), with
+# the install tests on every runner, including an upgrade over the previous
+# version. Publishing to get.tightline.systems is a separate, manual step
+# (RELEASE.md).
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build, e.g. 0.2.0"
+        required: true
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      previous: ${{ steps.v.outputs.previous }}
+    steps:
+      - id: v
+        env:
+          INPUT: ${{ github.event.inputs.version }}
+          REF: ${{ github.ref_name }}
+        run: |
+          v="${INPUT:-${REF#v}}"
+          [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "bad version $v"; exit 1; }
+          # The upgrade test installs an older version first.
+          IFS=. read -r a b c <<<"$v"
+          if [ "$c" -gt 0 ]; then p="$a.$b.$((c-1))"
+          elif [ "$b" -gt 0 ]; then p="$a.$((b-1)).99"
+          else p="$((a-1)).99.99"; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "previous=$p" >> "$GITHUB_OUTPUT"
+
+  macos:
+    name: macOS disk images
+    needs: version
+    runs-on: macos-15
+    env:
+      DSF_SQUARE_APP_ID: ${{ secrets.SQUARE_APP_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2.9.2
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm, cache-dependency-path: app/package-lock.json }
+      - run: npm ci
+        working-directory: app
+      - name: signing identity
+        env:
+          IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          CERT: ${{ secrets.APPLE_CERTIFICATE }}
+          CERT_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          NOTARY_ID: ${{ secrets.APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          TEAM: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Developer ID and notarization when the secrets exist; an ad-hoc
+          # signature until then. Tauri reads these from the environment,
+          # so they're set only when present.
+          if [ -n "$IDENTITY" ] && [ -n "$CERT" ]; then
+            {
+              echo "APPLE_SIGNING_IDENTITY=$IDENTITY"
+              echo "APPLE_CERTIFICATE=$CERT"
+              echo "APPLE_CERTIFICATE_PASSWORD=$CERT_PASSWORD"
+              echo "APPLE_ID=$NOTARY_ID"
+              echo "APPLE_PASSWORD=$NOTARY_PASSWORD"
+              echo "APPLE_TEAM_ID=$TEAM"
+            } >> "$GITHUB_ENV"
+          else
+            echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
+            echo "UNSIGNED: no Developer ID secrets yet"
+          fi
+      - name: build both versions
+        env:
+          V: ${{ needs.version.outputs.version }}
+          P: ${{ needs.version.outputs.previous }}
+        run: |
+          for ver in "$P" "$V"; do
+            (cd app && npx tauri build --target universal-apple-darwin --bundles app --config "{\"version\":\"$ver\"}")
+            tools/release/make-dmg.sh "target/universal-apple-darwin/release/bundle/macos/Dead Stock Finder.app" "DeadStockFinder-$ver-mac.dmg"
+          done
+          ls -l ./*.dmg
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos-dmg
+          path: "*.dmg"
+          if-no-files-found: error
+
+  windows:
+    name: Windows installers
+    needs: version
+    runs-on: windows-2025
+    env:
+      DSF_SQUARE_APP_ID: ${{ secrets.SQUARE_APP_ID }}
+      AZURE_SIGNING: ${{ secrets.AZURE_CLIENT_ID != '' && 'yes' || '' }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup show active-toolchain
+      - uses: Swatinem/rust-cache@v2.9.2
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm, cache-dependency-path: app/package-lock.json }
+      - run: npm ci
+        working-directory: app
+      - name: build both versions
+        shell: bash
+        env:
+          V: ${{ needs.version.outputs.version }}
+          P: ${{ needs.version.outputs.previous }}
+        run: |
+          for ver in "$P" "$V"; do
+            (cd app && npx tauri build --bundles nsis --config "{\"version\":\"$ver\"}")
+            cp target/release/bundle/nsis/*_"$ver"_x64-setup.exe "DeadStockFinder-$ver-win-x64.exe"
+          done
+          ls -l ./*.exe
+      # Azure Artifact Signing, once Austin decides (DECISIONS.md, S1). Runs
+      # only when its secrets exist; verify the action's current name and
+      # version when turning it on.
+      - name: sign (Azure Artifact Signing)
+        if: env.AZURE_SIGNING == 'yes'
+        uses: azure/trusted-signing-action@v0.5.1
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE }}
+          files-folder: ${{ github.workspace }}
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-nsis
+          path: "*.exe"
+          if-no-files-found: error
+
+  install-macos:
+    name: install test ${{ matrix.runner }}
+    needs: [version, macos]
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-26, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with: { name: macos-dmg, path: dist }
+      - name: install, upgrade
+        env:
+          V: ${{ needs.version.outputs.version }}
+          P: ${{ needs.version.outputs.previous }}
+          SIGNED: ${{ secrets.APPLE_SIGNING_IDENTITY != '' && '--signed' || '' }}
+        run: tools/ci/install-test-macos.sh "dist/DeadStockFinder-$P-mac.dmg" "dist/DeadStockFinder-$V-mac.dmg" "$PWD/install-${{ matrix.runner }}.json" ${SIGNED:+"$SIGNED"}
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: install-${{ matrix.runner }}
+          path: install-*.json
+          if-no-files-found: warn
+
+  install-windows:
+    name: install test ${{ matrix.runner }}
+    needs: [version, windows]
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-2025, windows-11-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with: { name: windows-nsis, path: dist }
+      - name: install, upgrade, uninstall
+        shell: pwsh
+        env:
+          V: ${{ needs.version.outputs.version }}
+          P: ${{ needs.version.outputs.previous }}
+          SIGNED: ${{ secrets.AZURE_CLIENT_ID != '' && 'yes' || '' }}
+        run: |
+          $signed = @{}
+          if ($env:SIGNED -eq "yes") { $signed = @{ Signed = $true } }
+          tools/ci/install-test-windows.ps1 -Old "dist/DeadStockFinder-$env:P-win-x64.exe" -New "dist/DeadStockFinder-$env:V-win-x64.exe" -Out (Join-Path $PWD "install-${{ matrix.runner }}.json") @signed
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: install-${{ matrix.runner }}
+          path: install-*.json
+          if-no-files-found: warn
+
+  summary:
+    name: sizes and checksums
+    needs: [version, macos, windows]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v8
+        with: { path: dist, merge-multiple: true }
+      - name: the real download sizes
+        run: |
+          cd dist
+          {
+            echo "## Dead Stock Finder ${{ needs.version.outputs.version }}"
+            echo
+            echo "| File | Size | SHA-256 |"
+            echo "|---|---|---|"
+            for f in *${{ needs.version.outputs.version }}*; do
+              echo "| $f | $(numfmt --to=iec --suffix=B "$(stat -c %s "$f")") | \`$(sha256sum "$f" | cut -c1-64)\` |"
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"

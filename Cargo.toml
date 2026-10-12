@@ -10,6 +10,7 @@ members = [
     "core/notify",
     "mock",
     "gen",
+    "bench",
     "app/src-tauri",
 ]
 # Everything but the Tauri shell builds and tests without system webview packages.
@@ -23,6 +24,7 @@ default-members = [
     "core/notify",
     "mock",
     "gen",
+    "bench",
 ]
 
 [workspace.package]
