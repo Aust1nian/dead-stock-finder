@@ -366,7 +366,6 @@ fn run_locked(cfg: &Config, deps: &Deps, cache: &mut Cache, log: &log::Log) -> O
     summary.labels_unchanged = run.unchanged;
     summary.labels_skipped = run.skipped.len() as u32;
     summary.timings_ms.push(("labels".into(), writing.elapsed().as_millis() as u64));
-    drop(writer);
     if run.written > 0 {
         // Take in this check's own writes now, so the next check reads only
         // what changed after them. A failure here costs nothing: the next
