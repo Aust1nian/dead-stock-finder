@@ -159,7 +159,7 @@ mod os {
 
     pub fn save(k: &OsKeychain, tokens: &Tokens) -> Result<(), StoreError> {
         let mut options = options(k);
-        options.set_label("Dead Stock Finder: Square connection");
+        options.set_label("Idle Stock Finder: Square connection");
         set_generic_password_options(&encode(tokens), options).map_err(map)
     }
 
@@ -333,7 +333,7 @@ mod tests {
     /// what the first saved. Skips where the OS keychain isn't available.
     #[test]
     fn os_keychain_survives_a_new_handle() {
-        let service = format!("com.tightline.deadstockfinder.test.{}", std::process::id());
+        let service = format!("com.tightline.idlestockfinder.test.{}", std::process::id());
         let first = OsKeychain::new(&service, "mock", true);
         let tokens = sample();
         if let Err(e) = first.save(&tokens) {

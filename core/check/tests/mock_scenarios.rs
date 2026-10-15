@@ -301,7 +301,7 @@ fn write_that_comes_back_changed_stops_all_writes() {
     assert!(s.label_problem.as_deref().unwrap().starts_with("label writes stopped"));
     let notes = h.notifier.taken();
     assert_eq!(notes.len(), 1, "{notes:?}");
-    assert_eq!(notes[0].0, "Dead Stock Finder stopped writing labels");
+    assert_eq!(notes[0].0, "Idle Stock Finder stopped writing labels");
     let halt = dsf_labels::halted(&h.cache()).unwrap();
     assert_eq!(halt.object_id, "I2");
     assert!(halt.paths.contains(&"/item_data/description".to_string()), "{:?}", halt.paths);
@@ -373,7 +373,7 @@ fn staff_changing_a_label_by_hand_is_put_back() {
     let h = Harness::new(base_seed(), Settings::default(), today());
     done(&h.check(Trigger::Manual));
     h.mock.state().staff_edit("I1", |o| {
-        o["custom_attribute_values"]["dead_stock_last_sold"]["string_value"] = json!("typed by hand");
+        o["custom_attribute_values"]["idle_stock_last_sold"]["string_value"] = json!("typed by hand");
     });
     h.advance(Duration::hours(1));
     done(&h.check(Trigger::Manual));

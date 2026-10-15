@@ -118,7 +118,7 @@ pub fn run() -> Report {
         scopes: scopes.iter().map(|s| s.to_string()).collect(),
         environment: "mock".into(),
     });
-    let dir = std::env::temp_dir().join(format!("dead-stock-finder-self-test-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("idle-stock-finder-self-test-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let cache_ok = Cache::open(&paths::cache_file(&dir))
         .and_then(|c| c.save_settings(&Settings { setup_done: true, ..Settings::default() }));

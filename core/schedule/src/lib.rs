@@ -26,17 +26,17 @@ use std::path::{Path, PathBuf};
 use chrono::{DateTime, Duration, Local, NaiveTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 
-pub const SIGNIN_LABEL: &str = "com.tightline.deadstockfinder.signin";
-pub const DAILY_LABEL: &str = "com.tightline.deadstockfinder.daily";
+pub const SIGNIN_LABEL: &str = "com.tightline.idlestockfinder.signin";
+pub const DAILY_LABEL: &str = "com.tightline.idlestockfinder.daily";
 /// The task sits in Task Scheduler's root, named for the Windows user:
 /// standard users may create tasks there but not new folders, and two
 /// people on one PC each get their own.
 pub fn task_name(user: &str) -> String {
     let clean: String =
         user.chars().filter(|c| !matches!(c, '\\' | '/' | ':' | '*' | '?' | '"' | '<' | '>' | '|')).collect();
-    format!("\\Dead Stock Finder check ({clean})")
+    format!("\\Idle Stock Finder check ({clean})")
 }
-pub const RUN_VALUE: &str = "DeadStockFinderCheck";
+pub const RUN_VALUE: &str = "IdleStockFinderCheck";
 pub const TICK_MINUTES: [u32; 4] = [0, 15, 30, 45];
 
 #[derive(Debug, thiserror::Error)]
@@ -209,7 +209,7 @@ pub fn launch_agent_plist(label: &str, program: &str, bundled: bool, trigger: Tr
 \t<key>Label</key>\n\t<string>{label}</string>\n\
 \t<key>{program_key}</key>\n\t<string>{program}</string>\n\
 \t<key>ProgramArguments</key>\n\t<array>\n\t\t<string>{program}</string>\n\t\t<string>--check</string>\n\t\t<string>--trigger</string>\n\t\t<string>{trigger}</string>\n\t</array>\n\
-\t<key>AssociatedBundleIdentifiers</key>\n\t<string>com.tightline.deadstockfinder</string>\n\
+\t<key>AssociatedBundleIdentifiers</key>\n\t<string>com.tightline.idlestockfinder</string>\n\
 \t<key>LimitLoadToSessionType</key>\n\t<string>Aqua</string>\n\
 \t<key>ProcessType</key>\n\t<string>Background</string>\n\
 {schedule}</dict>\n</plist>\n",
@@ -218,7 +218,7 @@ pub fn launch_agent_plist(label: &str, program: &str, bundled: bool, trigger: Tr
 }
 
 /// Path of the executable inside the bundle, as BundleProgram wants it.
-pub const BUNDLE_PROGRAM: &str = "Contents/MacOS/dead-stock-finder";
+pub const BUNDLE_PROGRAM: &str = "Contents/MacOS/idle-stock-finder";
 
 /// The Windows task definition (Task Scheduler XML).
 pub fn task_xml(user: &str, exe: &str, check_time: (u8, u8), with_logon: bool) -> String {
@@ -235,7 +235,7 @@ pub fn task_xml(user: &str, exe: &str, check_time: (u8, u8), with_logon: bool) -
         r#"<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
-    <Author>Dead Stock Finder</Author>
+    <Author>Idle Stock Finder</Author>
     <Description>Checks Square for items that haven't sold and updates their Last sold labels.</Description>
     <URI>{name}</URI>
   </RegistrationInfo>
@@ -477,7 +477,7 @@ mod os {
         for unit in xml.encode_utf16() {
             bytes.extend_from_slice(&unit.to_le_bytes());
         }
-        let path = std::env::temp_dir().join(format!("dead-stock-finder-task-{}.xml", std::process::id()));
+        let path = std::env::temp_dir().join(format!("idle-stock-finder-task-{}.xml", std::process::id()));
         std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
         let out = schtasks(&["/Create", "/TN", &name(), "/XML", &path.to_string_lossy(), "/F"]);
         let _ = std::fs::remove_file(&path);
@@ -713,7 +713,7 @@ mod tests {
         assert_eq!(tick.matches("<key>Minute</key>").count(), 4);
         let signin = launch_agent_plist(
             SIGNIN_LABEL,
-            "/Applications/X.app/Contents/MacOS/dead-stock-finder",
+            "/Applications/X.app/Contents/MacOS/idle-stock-finder",
             false,
             Trigger::Signin,
         );
@@ -748,7 +748,7 @@ mod tests {
     fn task_xml_has_both_triggers_and_no_admin() {
         let xml = task_xml(
             "PC\\owner",
-            "C:\\Users\\owner\\AppData\\Local\\Dead Stock Finder\\dead-stock-finder.exe",
+            "C:\\Users\\owner\\AppData\\Local\\Idle Stock Finder\\idle-stock-finder.exe",
             (5, 30),
             true,
         );
@@ -759,8 +759,8 @@ mod tests {
         assert!(xml.contains("<StartWhenAvailable>true</StartWhenAvailable>"));
         assert!(xml.contains("<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>"));
         assert!(xml.contains("<ExecutionTimeLimit>PT10M</ExecutionTimeLimit>"));
-        assert!(xml.contains("<URI>\\Dead Stock Finder check (owner)</URI>"));
+        assert!(xml.contains("<URI>\\Idle Stock Finder check (owner)</URI>"));
         assert!(!task_xml("u", "e", (5, 0), false).contains("LogonTrigger"));
-        assert_eq!(task_name("a/b:c"), "\\Dead Stock Finder check (abc)");
+        assert_eq!(task_name("a/b:c"), "\\Idle Stock Finder check (abc)");
     }
 }

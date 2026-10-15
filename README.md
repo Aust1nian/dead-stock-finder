@@ -1,4 +1,4 @@
-# Dead Stock Finder
+# Idle Stock Finder
 
 A free desktop app from Tight Line for Square sellers. It finds items that haven't sold in a window the owner picks, and writes a "Last sold" label onto each item in Square. It connects with the owner's own Square login, keeps everything on their computer, and refreshes itself in the background every day and at every sign-in.
 

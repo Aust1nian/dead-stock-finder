@@ -232,7 +232,7 @@ def run(d: Driver, shots: Path, data_dir: Path):
         d.click("#help-diagnostics")
         text = d.wait_text("#diagnostics-text", "", timeout=20)
         text = d.js("return document.getElementById('diagnostics-text').value")
-        assert "Dead Stock Finder diagnostics" in text
+        assert "Idle Stock Finder diagnostics" in text
         for secret in ["Ceramic mug", "Main St Boutique", "EAAA"]:
             assert secret not in text, f"diagnostics show {secret}"
         d.js("document.querySelector('dialog').close()")

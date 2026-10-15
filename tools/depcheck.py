@@ -25,7 +25,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ALLOWLIST = ROOT / "tools" / "deps-allowlist.txt"
-APP = "dead-stock-finder"
+APP = "idle-stock-finder"
 SHIPPING_TARGETS = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-pc-windows-msvc"]
 
 DENY = {

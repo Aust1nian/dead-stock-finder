@@ -9,14 +9,14 @@ The last gate is a real Square account, used with the owner's permission, on one
 
 ## Day 0: install and connect (Mac and PC)
 
-- [ ] Download from the real page (tightline.systems/deadstock) on the seller's computer, not from a USB stick.
+- [ ] Download from the real page (tightline.systems/idlestock) on the seller's computer, not from a USB stick.
 - [ ] Mac: the "downloaded from the internet" prompt appears once, and Open works. Windows: note exactly what SmartScreen shows (photo).
 - [ ] **Connect Square** opens Square's page in the browser. Log in, approve, and the app says "Connected to *business*". Take a photo of Square's approval screen.
 - [ ] If production refuses the `localhost` redirect, stop and tell Claude Code (`SQUARE_FACTS.md`, Redirect URL).
 - [ ] Setup: 90 days, the right locations, Labels on, 5:00 a.m., Check in the background on. Press **Start**.
 - [ ] Note how long the first sync takes and how many items it reports.
-- [ ] Mac: macOS shows "Dead Stock Finder added a background item". System Settings → General → Login Items lists Dead Stock Finder.
-- [ ] Windows: Task Scheduler (Library root) shows "Dead Stock Finder check (*user*)" with two triggers.
+- [ ] Mac: macOS shows "Idle Stock Finder added a background item". System Settings → General → Login Items lists Idle Stock Finder.
+- [ ] Windows: Task Scheduler (Library root) shows "Idle Stock Finder check (*user*)" with two triggers.
 
 ## Day 0: labels in Square
 

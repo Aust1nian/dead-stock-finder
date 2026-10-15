@@ -3,10 +3,10 @@
 
 use std::path::{Path, PathBuf};
 
-pub const FOLDER: &str = "com.tightline.deadstockfinder";
+pub const FOLDER: &str = "com.tightline.idlestockfinder";
 
-/// macOS: ~/Library/Application Support/com.tightline.deadstockfinder
-/// Windows: %LOCALAPPDATA%\com.tightline.deadstockfinder
+/// macOS: ~/Library/Application Support/com.tightline.idlestockfinder
+/// Windows: %LOCALAPPDATA%\com.tightline.idlestockfinder
 /// Linux (development): $XDG_DATA_HOME or ~/.local/share
 /// `DSF_DATA_DIR` overrides it (tests, CI).
 pub fn data_dir() -> PathBuf {

@@ -19,10 +19,10 @@ use chrono::{DateTime, Datelike, Months, NaiveDate, Utc};
 
 /// The key of the app's one catalog custom attribute. Never changed once
 /// sellers have labels: a new key would orphan every value written.
-pub const LABEL_KEY: &str = "dead_stock_last_sold";
+pub const LABEL_KEY: &str = "idle_stock_last_sold";
 /// The attribute's name in Square's screens.
 pub const LABEL_NAME: &str = "Last sold";
-pub const LABEL_DESCRIPTION: &str = "Updated daily by Dead Stock Finder.";
+pub const LABEL_DESCRIPTION: &str = "Updated daily by Idle Stock Finder.";
 use chrono_tz::Tz;
 use serde::Serialize;
 

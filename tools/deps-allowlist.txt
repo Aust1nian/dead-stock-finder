@@ -29,7 +29,6 @@ crossbeam-channel
 crossbeam-utils
 crypto-common
 ctor
-dead-stock-finder
 deranged
 digest
 dirs
@@ -73,6 +72,7 @@ icu_normalizer_data
 icu_properties
 icu_properties_data
 icu_provider
+idle-stock-finder
 idna
 idna_adapter
 indexmap

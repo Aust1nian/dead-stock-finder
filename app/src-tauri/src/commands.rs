@@ -422,7 +422,7 @@ pub async fn export(
     let settings = cache.settings().map_err(|e| e.to_string())?;
     let report = dsf_sync::report(&cache, &settings, Utc::now(), &query.into()).map_err(|e| e.to_string())?;
     let csv = format == "csv";
-    let name = format!("Dead stock {}.{}", Local::now().format("%Y-%m-%d"), if csv { "csv" } else { "xlsx" });
+    let name = format!("Idle stock {}.{}", Local::now().format("%Y-%m-%d"), if csv { "csv" } else { "xlsx" });
     let dialog = rfd::AsyncFileDialog::new().set_file_name(&name);
     let dialog =
         if csv { dialog.add_filter("CSV", &["csv"]) } else { dialog.add_filter("Excel workbook", &["xlsx"]) };
@@ -547,7 +547,7 @@ pub fn diagnostics(state: State<'_, AppState>) -> String {
 
 #[tauri::command]
 pub async fn save_diagnostics(text: String) -> Result<Option<String>, String> {
-    let name = format!("Dead Stock Finder diagnostics {}.txt", Local::now().format("%Y-%m-%d"));
+    let name = format!("Idle Stock Finder diagnostics {}.txt", Local::now().format("%Y-%m-%d"));
     let Some(file) =
         rfd::AsyncFileDialog::new().set_file_name(&name).add_filter("Text", &["txt"]).save_file().await
     else {

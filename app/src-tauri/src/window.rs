@@ -80,7 +80,7 @@ pub fn run() {
     builder
         .setup(|app| {
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                .title("Dead Stock Finder")
+                .title("Idle Stock Finder")
                 .inner_size(1180.0, 780.0)
                 .min_inner_size(900.0, 580.0);
             // Windows UI tests attach Edge WebDriver to a debugging port.
@@ -97,5 +97,5 @@ pub fn run() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("Dead Stock Finder failed to start");
+        .expect("Idle Stock Finder failed to start");
 }

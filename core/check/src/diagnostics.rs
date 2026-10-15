@@ -90,7 +90,7 @@ fn redact_patterns(text: &str) -> String {
 /// The diagnostics text, already redacted.
 pub fn build(data_dir: &Path, registration: &str, environment: &str) -> String {
     let mut lines = Vec::new();
-    lines.push("Dead Stock Finder diagnostics (item names, amounts and ids replaced)".to_string());
+    lines.push("Idle Stock Finder diagnostics (item names, amounts and ids replaced)".to_string());
     lines.push(format!(
         "app {} · Square-Version {} · {}",
         env!("CARGO_PKG_VERSION"),

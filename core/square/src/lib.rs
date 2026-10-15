@@ -11,7 +11,7 @@ pub use http::{Environment, Error, HttpClient, Method, RetryPolicy, SQUARE_VERSI
 pub use token::{MemoryStore, OsKeychain, StoreError, TokenStore, Tokens};
 
 /// The keychain service name and app-data folder name.
-pub const APP_ID: &str = "com.tightline.deadstockfinder";
+pub const APP_ID: &str = "com.tightline.idlestockfinder";
 
 pub(crate) fn random_u32() -> u32 {
     getrandom::u32().unwrap_or(0)

@@ -90,7 +90,7 @@ jobs:
         run: |
           for ver in "$P" "$V"; do
             (cd app && npx tauri build --target universal-apple-darwin --bundles app --config "{\"version\":\"$ver\"}")
-            tools/release/make-dmg.sh "target/universal-apple-darwin/release/bundle/macos/Dead Stock Finder.app" "DeadStockFinder-$ver-mac.dmg"
+            tools/release/make-dmg.sh "target/universal-apple-darwin/release/bundle/macos/Idle Stock Finder.app" "IdleStockFinder-$ver-mac.dmg"
           done
           ls -l ./*.dmg
       - uses: actions/upload-artifact@v7
@@ -122,7 +122,7 @@ jobs:
         run: |
           for ver in "$P" "$V"; do
             (cd app && npx tauri build --bundles nsis --config "{\"version\":\"$ver\"}")
-            cp target/release/bundle/nsis/*_"$ver"_x64-setup.exe "DeadStockFinder-$ver-win-x64.exe"
+            cp target/release/bundle/nsis/*_"$ver"_x64-setup.exe "IdleStockFinder-$ver-win-x64.exe"
           done
           ls -l ./*.exe
       # Azure Artifact Signing, once Austin decides (DECISIONS.md, S1). Runs
@@ -166,7 +166,7 @@ jobs:
           V: ${{ needs.version.outputs.version }}
           P: ${{ needs.version.outputs.previous }}
           SIGNED: ${{ secrets.APPLE_SIGNING_IDENTITY != '' && '--signed' || '' }}
-        run: tools/ci/install-test-macos.sh "dist/DeadStockFinder-$P-mac.dmg" "dist/DeadStockFinder-$V-mac.dmg" "$PWD/install-${{ matrix.runner }}.json" ${SIGNED:+"$SIGNED"}
+        run: tools/ci/install-test-macos.sh "dist/IdleStockFinder-$P-mac.dmg" "dist/IdleStockFinder-$V-mac.dmg" "$PWD/install-${{ matrix.runner }}.json" ${SIGNED:+"$SIGNED"}
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -195,7 +195,7 @@ jobs:
         run: |
           $signed = @{}
           if ($env:SIGNED -eq "yes") { $signed = @{ Signed = $true } }
-          tools/ci/install-test-windows.ps1 -Old "dist/DeadStockFinder-$env:P-win-x64.exe" -New "dist/DeadStockFinder-$env:V-win-x64.exe" -Out (Join-Path $PWD "install-${{ matrix.runner }}.json") @signed
+          tools/ci/install-test-windows.ps1 -Old "dist/IdleStockFinder-$env:P-win-x64.exe" -New "dist/IdleStockFinder-$env:V-win-x64.exe" -Out (Join-Path $PWD "install-${{ matrix.runner }}.json") @signed
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -214,7 +214,7 @@ jobs:
         run: |
           cd dist
           {
-            echo "## Dead Stock Finder ${{ needs.version.outputs.version }}"
+            echo "## Idle Stock Finder ${{ needs.version.outputs.version }}"
             echo
             echo "| File | Size | SHA-256 |"
             echo "|---|---|---|"

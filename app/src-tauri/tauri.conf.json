@@ -1,8 +1,8 @@
 {
-  "productName": "Dead Stock Finder",
-  "mainBinaryName": "dead-stock-finder",
+  "productName": "Idle Stock Finder",
+  "mainBinaryName": "idle-stock-finder",
   "version": "0.1.0",
-  "identifier": "com.tightline.deadstockfinder",
+  "identifier": "com.tightline.idlestockfinder",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5174",

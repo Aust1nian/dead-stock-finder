@@ -145,7 +145,7 @@ struct HttpResponseCopy {
     body: Value,
 }
 
-pub const MOCK_APP_ID: &str = "sq0idp-mock-dead-stock-finder";
+pub const MOCK_APP_ID: &str = "sq0idp-mock-idle-stock-finder";
 
 impl State {
     pub fn now(&self) -> DateTime<Utc> {
@@ -889,7 +889,7 @@ fn prepare(s: &mut State, incoming: &Value) -> Result<(Value, Option<String>), H
             let real = format!("DEF{:08}MOCK", s.next_id);
             object["id"] = json!(real);
             object["custom_attribute_definition_data"]["source_application"] =
-                json!({ "application_id": s.app_id, "name": "Dead Stock Finder (mock)" });
+                json!({ "application_id": s.app_id, "name": "Idle Stock Finder (mock)" });
             return Ok((object, Some(id)));
         }
         s.next_id += 1;

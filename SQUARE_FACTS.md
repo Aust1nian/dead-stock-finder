@@ -56,7 +56,7 @@ Decisions that follow from these facts are in `DECISIONS.md`.
   - `type` STRING; `name` "Last sold" (unique per merchant and app); `description`.
   - `allowed_object_types` [ITEM, ITEM_VARIATION].
   - `seller_visibility` SELLER_VISIBILITY_READ_WRITE_VALUES; `app_visibility` APP_VISIBILITY_HIDDEN.
-  - `key` `dead_stock_last_sold`: 1–60 characters `[a-zA-Z0-9_-]`, unchangeable.
+  - `key` `idle_stock_last_sold`: 1–60 characters `[a-zA-Z0-9_-]`, unchangeable.
   - String values are up to 255 characters.
   - A seller may have at most 10 seller-visible definitions. If that limit blocks creating ours, the app runs report-only for that seller and says why.
 - **Values.**

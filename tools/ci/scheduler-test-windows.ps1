@@ -19,16 +19,16 @@ function Check([string]$Name, [string]$Status, [string]$Detail) {
   if ($Status -eq "fail") { $script:failed = $true }
 }
 
-$task = "\Dead Stock Finder check ($env:USERNAME)"
-$data = Join-Path $env:LOCALAPPDATA "com.tightline.deadstockfinder"
+$task = "\Idle Stock Finder check ($env:USERNAME)"
+$data = Join-Path $env:LOCALAPPDATA "com.tightline.idlestockfinder"
 $log = Join-Path $data "logs\check.log"
 Remove-Item $data -Recurse -Force -ErrorAction SilentlyContinue
 
 # 1. Install for this user, silently.
 $p = Start-Process -FilePath $Installer -ArgumentList "/S" -Wait -PassThru
-$exe = Join-Path $env:LOCALAPPDATA "Dead Stock Finder\dead-stock-finder.exe"
+$exe = Join-Path $env:LOCALAPPDATA "Idle Stock Finder\idle-stock-finder.exe"
 if (-not (Test-Path $exe)) {
-  $found = Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter dead-stock-finder.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+  $found = Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter idle-stock-finder.exe -ErrorAction SilentlyContinue | Select-Object -First 1
   if ($found) { $exe = $found.FullName }
 }
 Check "installed" $(if (Test-Path $exe) { "pass" } else { "fail" }) "exit $($p.ExitCode); $exe"
@@ -109,7 +109,7 @@ icacls $work /grant "*S-1-5-32-545:(OI)(CI)M" | Out-Null
 $script = @"
 `$ErrorActionPreference = 'Continue'
 Start-Process -FilePath '$work\setup.exe' -ArgumentList '/S' -Wait
-`$exe = Join-Path `$env:LOCALAPPDATA 'Dead Stock Finder\dead-stock-finder.exe'
+`$exe = Join-Path `$env:LOCALAPPDATA 'Idle Stock Finder\idle-stock-finder.exe'
 & `$exe --test-mark-setup | Out-Null
 `$p = Start-Process -FilePath `$exe -ArgumentList '--schedule register --json-out $work\user-register.json' -Wait -PassThru
 whoami /groups | Out-File '$work\user-groups.txt'
@@ -122,9 +122,9 @@ $userReg = Get-Content "$work\user-register.json" -Raw -ErrorAction SilentlyCont
 $elevated = (Get-Content "$work\user-groups.txt" -Raw -ErrorAction SilentlyContinue) -match "S-1-5-32-544.*Enabled group"
 Check "standard-user" $(if ($isAdmin -or $elevated) { "fail" } else { "pass" }) "$user, not in Administrators"
 Check "standard-user-register" $(if ($userReg -match '"task_scheduler"') { "pass" } elseif ($userReg -match '"task_scheduler_daily_and_run_key"|"run_key_only"') { "info" } else { "fail" }) "$userReg"
-$userXml = (schtasks /query /tn "\Dead Stock Finder check ($user)" /xml 2>$null) -join "`n"
+$userXml = (schtasks /query /tn "\Idle Stock Finder check ($user)" /xml 2>$null) -join "`n"
 Check "standard-user-task" $(if ($userXml -match "<LogonTrigger>" -and $userXml -match "<CalendarTrigger>") { "pass" } else { "info" }) (($userXml -split "`n" | Select-String -Pattern "Trigger>|UserId|LogonType") -join " ")
-schtasks /delete /tn "\Dead Stock Finder check ($user)" /f 2>$null | Out-Null
+schtasks /delete /tn "\Idle Stock Finder check ($user)" /f 2>$null | Out-Null
 schtasks /delete /tn "dsf-as-user" /f | Out-Null
 
 # 7. Unregister, then uninstall; nothing of the schedule is left.
@@ -136,7 +136,7 @@ if (Test-Path $uninstaller) {
   Start-Process -FilePath $uninstaller -ArgumentList "/S" -Wait | Out-Null
   Start-Sleep -Seconds 3
 }
-$run = Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "DeadStockFinderCheck" -ErrorAction SilentlyContinue
+$run = Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "IdleStockFinderCheck" -ErrorAction SilentlyContinue
 Check "uninstalled" $(if (-not (Test-Path $exe) -and -not $run) { "pass" } else { "fail" }) "exe present: $(Test-Path $exe); Run entry: $([bool]$run)"
 Check "log" "info" ((Get-Content $log -Tail 20 -ErrorAction SilentlyContinue) -join " | ")
 

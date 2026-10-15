@@ -3,8 +3,8 @@
     "macOS": {
       "hardenedRuntime": true,
       "files": {
-        "Library/LaunchAgents/com.tightline.deadstockfinder.signin.plist": "./macos/LaunchAgents/com.tightline.deadstockfinder.signin.plist",
-        "Library/LaunchAgents/com.tightline.deadstockfinder.daily.plist": "./macos/LaunchAgents/com.tightline.deadstockfinder.daily.plist"
+        "Library/LaunchAgents/com.tightline.idlestockfinder.signin.plist": "./macos/LaunchAgents/com.tightline.idlestockfinder.signin.plist",
+        "Library/LaunchAgents/com.tightline.idlestockfinder.daily.plist": "./macos/LaunchAgents/com.tightline.idlestockfinder.daily.plist"
       }
     }
   }

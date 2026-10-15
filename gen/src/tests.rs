@@ -430,7 +430,7 @@ fn months_match_a_brute_force_over_start_months() {
 fn label_text_format() {
     assert_eq!(date_text(NaiveDate::from_ymd_opt(2026, 7, 4).unwrap()), "Jul 4, 2026");
     assert_eq!(date_text(NaiveDate::from_ymd_opt(2025, 12, 31).unwrap()), "Dec 31, 2025");
-    assert_eq!(LABEL_KEY, "dead_stock_last_sold");
+    assert_eq!(LABEL_KEY, "idle_stock_last_sold");
 }
 
 #[test]

@@ -3,18 +3,18 @@
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>com.tightline.deadstockfinder.daily</string>
+	<string>com.tightline.idlestockfinder.daily</string>
 	<key>BundleProgram</key>
-	<string>Contents/MacOS/dead-stock-finder</string>
+	<string>Contents/MacOS/idle-stock-finder</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>Contents/MacOS/dead-stock-finder</string>
+		<string>Contents/MacOS/idle-stock-finder</string>
 		<string>--check</string>
 		<string>--trigger</string>
 		<string>tick</string>
 	</array>
 	<key>AssociatedBundleIdentifiers</key>
-	<string>com.tightline.deadstockfinder</string>
+	<string>com.tightline.idlestockfinder</string>
 	<key>LimitLoadToSessionType</key>
 	<string>Aqua</string>
 	<key>ProcessType</key>

@@ -32,7 +32,7 @@ icacls $work /grant "*S-1-5-32-545:(OI)(CI)M" | Out-Null
 
 # 1. Downloaded from the internet (zone 3), no admin, signature.
 foreach ($f in @("old-setup.exe", "new-setup.exe")) {
-  Set-Content -Path "$work\$f" -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3`r`nHostUrl=https://get.tightline.systems/deadstock/$f"
+  Set-Content -Path "$work\$f" -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3`r`nHostUrl=https://get.tightline.systems/idlestock/$f"
 }
 Check "mark-of-the-web" "pass" ((Get-Content -Path "$work\new-setup.exe" -Stream Zone.Identifier) -join " ")
 Check "installer-size" "info" "$((Get-Item "$work\new-setup.exe").Length) bytes"
@@ -97,13 +97,13 @@ function Run-Wait([string]$File, [string]$Arguments) {
 # 3. Install the older build as that user; self-test; owner state.
 $ok = As-User @"
 Run-Wait '$work\old-setup.exe' '/S' | Set-Content '$work\install-exit.txt'
-`$exe = Join-Path `$env:LOCALAPPDATA 'Dead Stock Finder\dead-stock-finder.exe'
+`$exe = Join-Path `$env:LOCALAPPDATA 'Idle Stock Finder\idle-stock-finder.exe'
 Set-Content '$work\exe-path.txt' `$exe
 Run-Wait `$exe '--self-test --json-out $work\selftest-installed.json' | Set-Content '$work\selftest-exit.txt'
 & `$exe --test-mark-setup | Out-Null
-cmdkey /generic:com.tightline.deadstockfinder/square-production /user:Square /pass:upgrade-test-token | Out-Null
+cmdkey /generic:com.tightline.idlestockfinder/square-production /user:Square /pass:upgrade-test-token | Out-Null
 Run-Wait `$exe '--schedule register --json-out $work\register.json' | Out-Null
-Get-FileHash (Join-Path `$env:LOCALAPPDATA 'com.tightline.deadstockfinder\cache.sqlite') | Select-Object -ExpandProperty Hash | Set-Content '$work\cache-before.txt'
+Get-FileHash (Join-Path `$env:LOCALAPPDATA 'com.tightline.idlestockfinder\cache.sqlite') | Select-Object -ExpandProperty Hash | Set-Content '$work\cache-before.txt'
 whoami /groups | Out-File '$work\groups.txt'
 "@
 $exePath = (Get-Content "$work\exe-path.txt" -ErrorAction SilentlyContinue)
@@ -116,20 +116,20 @@ if ($selftest -and $selftest.Length -gt 400) { $selftest = $selftest.Substring(0
 Check "self-test" $(if ((Get-Content "$work\selftest-exit.txt" -ErrorAction SilentlyContinue) -eq "0") { "pass" } else { "fail" }) "$selftest"
 $reg = Get-Content "$work\register.json" -Raw -ErrorAction SilentlyContinue
 Check "register" $(if ($reg -match '"task_scheduler"') { "pass" } else { "fail" }) "$reg"
-$task = "\Dead Stock Finder check ($user)"
+$task = "\Idle Stock Finder check ($user)"
 $xml = (schtasks /query /tn $task /xml 2>$null) -join "`n"
 Check "task-under-user" $(if ($xml -match "<LogonTrigger>" -and $xml -match "InteractiveToken") { "pass" } else { "fail" }) (($xml -split "`n" | Select-String "UserId|LogonType") -join " ")
 
 # 4. Upgrade: the newer installer over the older one.
 $ok = As-User @"
 Run-Wait '$work\new-setup.exe' '/S' | Set-Content '$work\upgrade-exit.txt'
-cmdkey /list:com.tightline.deadstockfinder/square-production | Out-File '$work\cred-after.txt'
-Get-FileHash (Join-Path `$env:LOCALAPPDATA 'com.tightline.deadstockfinder\cache.sqlite') | Select-Object -ExpandProperty Hash | Set-Content '$work\cache-after.txt'
-(Get-Item (Join-Path `$env:LOCALAPPDATA 'Dead Stock Finder\dead-stock-finder.exe')).VersionInfo.ProductVersion | Set-Content '$work\version-after.txt'
+cmdkey /list:com.tightline.idlestockfinder/square-production | Out-File '$work\cred-after.txt'
+Get-FileHash (Join-Path `$env:LOCALAPPDATA 'com.tightline.idlestockfinder\cache.sqlite') | Select-Object -ExpandProperty Hash | Set-Content '$work\cache-after.txt'
+(Get-Item (Join-Path `$env:LOCALAPPDATA 'Idle Stock Finder\idle-stock-finder.exe')).VersionInfo.ProductVersion | Set-Content '$work\version-after.txt'
 "@
 Check "upgraded" $(if ($ok -and (Get-Content "$work\upgrade-exit.txt" -ErrorAction SilentlyContinue) -eq "0") { "pass" } else { "fail" }) "now $(Get-Content "$work\version-after.txt" -ErrorAction SilentlyContinue)"
 $cred = Get-Content "$work\cred-after.txt" -Raw -ErrorAction SilentlyContinue
-Check "upgrade-keeps-connection" $(if ($cred -match "com.tightline.deadstockfinder/square-production") { "pass" } else { "fail" }) ($cred -replace "\s+", " ")
+Check "upgrade-keeps-connection" $(if ($cred -match "com.tightline.idlestockfinder/square-production") { "pass" } else { "fail" }) ($cred -replace "\s+", " ")
 $before = Get-Content "$work\cache-before.txt" -ErrorAction SilentlyContinue
 $after = Get-Content "$work\cache-after.txt" -ErrorAction SilentlyContinue
 Check "upgrade-keeps-cache" $(if ($before -and $before -eq $after) { "pass" } else { "fail" }) "before $before after $after"
@@ -138,12 +138,12 @@ Check "upgrade-keeps-background-check" $(if ($xml -match "<LogonTrigger>" -and $
 
 # 5. Uninstall (silent: the owner didn't ask to delete app data).
 $ok = As-User @"
-`$u = Join-Path `$env:LOCALAPPDATA 'Dead Stock Finder\uninstall.exe'
+`$u = Join-Path `$env:LOCALAPPDATA 'Idle Stock Finder\uninstall.exe'
 Run-Wait `$u '/S' | Out-Null
 Start-Sleep -Seconds 5
-Test-Path (Join-Path `$env:LOCALAPPDATA 'Dead Stock Finder\dead-stock-finder.exe') | Set-Content '$work\exe-left.txt'
-Test-Path (Join-Path `$env:LOCALAPPDATA 'com.tightline.deadstockfinder\cache.sqlite') | Set-Content '$work\cache-left.txt'
-cmdkey /delete:com.tightline.deadstockfinder/square-production | Out-Null
+Test-Path (Join-Path `$env:LOCALAPPDATA 'Idle Stock Finder\idle-stock-finder.exe') | Set-Content '$work\exe-left.txt'
+Test-Path (Join-Path `$env:LOCALAPPDATA 'com.tightline.idlestockfinder\cache.sqlite') | Set-Content '$work\cache-left.txt'
+cmdkey /delete:com.tightline.idlestockfinder/square-production | Out-Null
 "@
 $xml = (schtasks /query /tn $task 2>$null)
 Check "uninstall-removes-task" $(if ($LASTEXITCODE -ne 0) { "pass" } else { "fail" }) "task query exit $LASTEXITCODE"

@@ -83,7 +83,7 @@ fn csv_text(text: &str) -> String {
 pub fn write_xlsx(report: &Report, path: &Path) -> Result<(), rust_xlsxwriter::XlsxError> {
     let mut book = Workbook::new();
     let sheet = book.add_worksheet();
-    sheet.set_name("Dead stock")?;
+    sheet.set_name("Idle stock")?;
     let bold = Format::new().set_bold();
     let money_format = Format::new().set_num_format("#,##0.00");
     for (c, h) in HEADERS.iter().enumerate() {

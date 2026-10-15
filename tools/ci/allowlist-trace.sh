@@ -2,7 +2,7 @@
 # Allowlist trace (spec § CI, Linux): runs the self-test, a full check
 # against the loopback mock, under strace and fails on any outbound
 # connection or DNS lookup that isn't the mock on 127.0.0.1.
-# Usage: tools/ci/allowlist-trace.sh <dead-stock-finder binary> <out.json>
+# Usage: tools/ci/allowlist-trace.sh <idle-stock-finder binary> <out.json>
 set -euo pipefail
 exe="$1"
 out="$2"

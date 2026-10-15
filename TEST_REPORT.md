@@ -2,7 +2,7 @@
 
 The state of every test layer the spec asks for (SPEC § Tests, CI and install tests), with links to the runs. "Pending" means the layer needs something only Austin can provide.
 
-Repo: https://github.com/Aust1nian/dead-stock-finder (public; CI is free).
+Repo: https://github.com/Aust1nian/idle-stock-finder (public; CI is free).
 
 ## Summary
 
@@ -49,11 +49,11 @@ All 22 pass, on every push. They cover each scenario the spec lists:
 
 | Run | What | Result |
 |---|---|---|
-| [38241270607](https://github.com/Aust1nian/dead-stock-finder/actions/runs/38241270607) | Latest code: all 14 jobs | ✅ all green |
-| [38241215255](https://github.com/Aust1nian/dead-stock-finder/actions/runs/38241215255) | Release candidate 0.1.0: builds, install tests on five runners | ✅ all green |
-| [38236686258](https://github.com/Aust1nian/dead-stock-finder/actions/runs/38236686258) | First release candidate | Mac ✅; Windows ❌: the test started the marked installer through the shell, whose security box can't be clicked in a batch session. Fixed by starting it directly |
-| [38235262754](https://github.com/Aust1nian/dead-stock-finder/actions/runs/38235262754) | Phase 5 commit: all 14 jobs | ✅ all green |
-| [38233548421](https://github.com/Aust1nian/dead-stock-finder/actions/runs/38233548421) | Phase 0: first full matrix | macOS scheduler ✅; Windows registration as a standard user ❌ (task folder needs admin; fixed by moving the task to the root); Linux keyring ❌ (fixed) |
+| [38241270607](https://github.com/Aust1nian/idle-stock-finder/actions/runs/38241270607) | Latest code: all 14 jobs | ✅ all green |
+| [38241215255](https://github.com/Aust1nian/idle-stock-finder/actions/runs/38241215255) | Release candidate 0.1.0: builds, install tests on five runners | ✅ all green |
+| [38236686258](https://github.com/Aust1nian/idle-stock-finder/actions/runs/38236686258) | First release candidate | Mac ✅; Windows ❌: the test started the marked installer through the shell, whose security box can't be clicked in a batch session. Fixed by starting it directly |
+| [38235262754](https://github.com/Aust1nian/idle-stock-finder/actions/runs/38235262754) | Phase 5 commit: all 14 jobs | ✅ all green |
+| [38233548421](https://github.com/Aust1nian/idle-stock-finder/actions/runs/38233548421) | Phase 0: first full matrix | macOS scheduler ✅; Windows registration as a standard user ❌ (task folder needs admin; fixed by moving the task to the root); Linux keyring ❌ (fixed) |
 
 ### Scheduler evidence (run 38235262754)
 
@@ -63,7 +63,7 @@ All 22 pass, on every push. They cover each scenario the spec lists:
   - The sign-in agent fired (`not_connected`, windows 0), the daily tick fired (`skipped: not due`), and a held lock made a third run step aside.
   - After unregistering, launchd lists neither agent.
 - **windows-2025.**
-  - The task "Dead Stock Finder check (runneradmin)" has a LogonTrigger, a CalendarTrigger at 05:00, `InteractiveToken`, least privilege and a 10-minute limit.
+  - The task "Idle Stock Finder check (runneradmin)" has a LogonTrigger, a CalendarTrigger at 05:00, `InteractiveToken`, least privilege and a 10-minute limit.
   - `schtasks /run` started a check that owned 0 windows, and the lock stopped an overlapping run.
   - A separate **standard user** registered their own task with both triggers, with no admin rights.
   - Unregistering and uninstalling left no task, no Run entry and no app.

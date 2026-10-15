@@ -1,4 +1,4 @@
-// Dead Stock Finder's window: connect, set up, the report, settings, help.
+// Idle Stock Finder's window: connect, set up, the report, settings, help.
 
 import { api, on, type AppView, type Outcome, type ProgressEvent, type SelfTestReport, type Settings } from "./api";
 import { clear, h } from "./dom";
@@ -35,7 +35,7 @@ function renderHeader(): void {
       ? h("button", { class: "ghost", id: "open-settings", onclick: () => openSettings() }, "Settings")
       : null;
   header.append(
-    h("div", { class: "bar-inner" }, h("span", { class: "brand" }, "Dead Stock Finder"), name, h("span", { class: "grow" }), settings, help),
+    h("div", { class: "bar-inner" }, h("span", { class: "brand" }, "Idle Stock Finder"), name, h("span", { class: "grow" }), settings, help),
   );
 }
 
@@ -45,7 +45,7 @@ function helpMenu(): HTMLElement {
     { class: "menu right", hidden: true, id: "help-menu" },
     h("button", { id: "help-self-test", onclick: () => pick(openSelfTest) }, "Check this computer"),
     h("button", { id: "help-diagnostics", onclick: () => pick(openDiagnostics) }, "Save diagnostics…"),
-    h("button", { id: "help-about", onclick: () => pick(openAbout) }, "About Dead Stock Finder"),
+    h("button", { id: "help-about", onclick: () => pick(openAbout) }, "About Idle Stock Finder"),
   );
   const pick = (open: () => unknown) => {
     menu.hidden = true;
@@ -107,7 +107,7 @@ function welcome(): HTMLElement {
   return h(
     "section",
     { class: "welcome" },
-    h("h1", {}, "Dead Stock Finder"),
+    h("h1", {}, "Idle Stock Finder"),
     h(
       "p",
       { class: "lead" },
@@ -488,7 +488,7 @@ function openSettings(): void {
         d.close();
         report = null;
         message = {
-          text: "Disconnected. To remove Dead Stock Finder from Square too, open Square Dashboard, then Settings, then App integrations.",
+          text: "Disconnected. To remove Idle Stock Finder from Square too, open Square Dashboard, then Settings, then App integrations.",
           kind: "info",
         };
         route();
@@ -507,7 +507,7 @@ function openSettings(): void {
     h(
       "p",
       { class: "hint" },
-      "You can also cut Dead Stock Finder off from Square at any time: Square Dashboard, Settings, App integrations, Disconnect App.",
+      "You can also cut Idle Stock Finder off from Square at any time: Square Dashboard, Settings, App integrations, Disconnect App.",
     ),
   );
 }
@@ -556,7 +556,7 @@ async function openDiagnostics(): Promise<void> {
 
 function openAbout(): void {
   dialog(
-    "About Dead Stock Finder",
+    "About Idle Stock Finder",
     h("p", {}, `Version ${view.version}. A free tool from Tight Line.`),
     h("p", {}, "It talks only to Square. No tracking, no update checks, no other servers. Your sales stay on this computer."),
     h("p", { class: "hint", id: "about-background" }, `Background check: ${view.registration.detail}`),

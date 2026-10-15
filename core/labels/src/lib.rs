@@ -197,7 +197,7 @@ impl Writer<'_> {
         }
         let definition = json!({
             "type": "CUSTOM_ATTRIBUTE_DEFINITION",
-            "id": "#dead_stock_last_sold",
+            "id": "#idle_stock_last_sold",
             "custom_attribute_definition_data": {
                 "type": "STRING",
                 "name": LABEL_NAME,

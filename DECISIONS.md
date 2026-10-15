@@ -4,7 +4,20 @@ Every judgment call and every deviation from `SPEC.md`, with the date, the choic
 
 ## Austin's open decisions (SPEC § "Open decisions for Austin")
 
-**2026-10-12 · 1. App name and branding: working default, "Dead Stock Finder", a free tool from Tight Line.** The company name comes from Austin's answer for the Schedule Spotter and Document Sorter. Bundle identifier: `com.tightline.deadstockfinder`. *Rules out:* nothing yet; Austin can rename.
+**2026-10-15 · 1. App name: "Idle Stock Finder", a free tool from Tight Line (Austin's answer).** Austin: "it needs to be renamed to Idle Stock Finder ever[y]where deadstock finder is mentioned." The spec's working title was "Dead Stock Finder". The rename covers everything user-visible and every identifier:
+- the window, installers, notifications, label description, export file and sheet names, docs;
+- bundle id `com.tightline.idlestockfinder`, binary `idle-stock-finder`, LaunchAgent labels, the Windows task name, the keychain service, the data folder;
+- the label key, which became `idle_stock_last_sold`;
+- the GitHub repo, now `Aust1nian/idle-stock-finder`.
+
+No shop had any labels yet: the one Sandbox test connection had not started its first check, so nothing in Square carries the old key.
+
+What stays:
+- `SPEC.md` and the original spec file, unchanged as the record of the spec;
+- the internal crate prefix `dsf-` and the `DSF_` environment variables, which no owner sees;
+- this repo's local folder name.
+
+Still to rename outside this repo (Austin): the Square application's name in the Developer Console, and the website's tool entry (`deadstock.json`, slug `deadstock`), which the docs now call `idlestock`.
 
 **2026-10-12 · 2. Square developer app owner: working default (the company's Square developer account).** Austin has no Square Developer account yet. He chose to build against the mock server first ("Not yet, use the mock"). `SQUARE_APP_SETUP.md` gives him the steps for when he does. *Rules out:* nothing.
 
@@ -105,7 +118,7 @@ A computer clock that runs fast or slow can't make the app skip orders.
 
 **2026-10-12 · Items and variations carried at none of the selected locations get no label**, and a label this app wrote earlier is removed. Archived items are skipped and left as they are.
 
-**2026-10-12 · The label key is `dead_stock_last_sold`.** It can never change once sellers have labels: a new key would leave every old value behind.
+**2026-10-12 · The label key is `idle_stock_last_sold`.** It was `dead_stock_last_sold` until the rename on 2026-10-15, before any shop had a label. It can never change once sellers have labels: a new key would leave every old value behind.
 
 ## CI runners
 
@@ -117,7 +130,7 @@ A computer clock that runs fast or slow can't make the app skip orders.
 
 **2026-10-12 · macOS uses two bundled LaunchAgents.** A sign-in agent runs at load. A daily agent fires every 15 minutes, and the check runs only when the owner's daily time has passed since the last check. The plists ship inside the signed bundle (SMAppService), so they can't be rewritten when the owner changes the time; a tick plus a due-check keeps the time adjustable. A missed time runs on wake, because launchd coalesces calendar events missed during sleep. The daily-time choice moves in 15-minute steps. After a failed attempt, ticks retry at most every two hours until one succeeds.
 
-**2026-10-12 · The Windows task lives in Task Scheduler's root, named "Dead Stock Finder check (<user>)".** CI showed that a standard user could not create the task under a new "\Dead Stock Finder\" folder. Standard users may create tasks at the root, and the per-user name keeps two people on one PC apart. Every failed path is reported in the error, so a refusal can be diagnosed.
+**2026-10-12 · The Windows task lives in Task Scheduler's root, named "Idle Stock Finder check (<user>)".** CI showed that a standard user could not create the task under a new "\Idle Stock Finder\" folder. Standard users may create tasks at the root, and the per-user name keeps two people on one PC apart. Every failed path is reported in the error, so a refusal can be diagnosed.
 
 **2026-10-12 · The Run-key fallback creates the per-user Run key when it is missing.** A new Windows user may not have one yet.
 

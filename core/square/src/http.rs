@@ -20,7 +20,7 @@ pub const SQUARE_VERSION: &str = "2026-09-16";
 pub const PRODUCTION_HOST: &str = "connect.squareup.com";
 pub const SANDBOX_HOST: &str = "connect.squareupsandbox.com";
 
-const USER_AGENT: &str = concat!("DeadStockFinder/", env!("CARGO_PKG_VERSION"));
+const USER_AGENT: &str = concat!("IdleStockFinder/", env!("CARGO_PKG_VERSION"));
 
 /// Where requests go.
 #[derive(Clone, Debug, PartialEq, Eq)]

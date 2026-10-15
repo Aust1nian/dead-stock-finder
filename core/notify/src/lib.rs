@@ -8,8 +8,8 @@
 
 use std::sync::Mutex;
 
-pub const AUMID: &str = "com.tightline.deadstockfinder";
-pub const APP_NAME: &str = "Dead Stock Finder";
+pub const AUMID: &str = "com.tightline.idlestockfinder";
+pub const APP_NAME: &str = "Idle Stock Finder";
 
 pub trait Notifier: Send + Sync {
     fn notify(&self, title: &str, body: &str);

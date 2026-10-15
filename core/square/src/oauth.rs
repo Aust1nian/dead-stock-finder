@@ -221,12 +221,12 @@ fn handle_callback(mut stream: TcpStream, state: &str) -> Option<Result<String, 
         Ok(_) => respond(
             &mut stream,
             "200 OK",
-            "Connected. You can close this tab and go back to Dead Stock Finder.",
+            "Connected. You can close this tab and go back to Idle Stock Finder.",
         ),
         Err(_) => respond(
             &mut stream,
             "200 OK",
-            "Square didn't connect. Close this tab and try again in Dead Stock Finder.",
+            "Square didn't connect. Close this tab and try again in Idle Stock Finder.",
         ),
     }
     Some(result)
@@ -234,7 +234,7 @@ fn handle_callback(mut stream: TcpStream, state: &str) -> Option<Result<String, 
 
 fn respond(stream: &mut TcpStream, status: &str, message: &str) {
     let body = format!(
-        "<!doctype html><meta charset=utf-8><title>Dead Stock Finder</title>\
+        "<!doctype html><meta charset=utf-8><title>Idle Stock Finder</title>\
          <body style=\"font:16px system-ui,sans-serif;margin:3em\"><p>{message}</p></body>"
     );
     let _ = write!(

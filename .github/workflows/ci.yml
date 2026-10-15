@@ -53,16 +53,16 @@ jobs:
         working-directory: app
       - name: universal binary and bundled LaunchAgents
         run: |
-          app="target/universal-apple-darwin/release/bundle/macos/Dead Stock Finder.app"
-          lipo -archs "$app/Contents/MacOS/dead-stock-finder"
+          app="target/universal-apple-darwin/release/bundle/macos/Idle Stock Finder.app"
+          lipo -archs "$app/Contents/MacOS/idle-stock-finder"
           ls -l "$app/Contents/Library/LaunchAgents"
           codesign -dv "$app" 2>&1 | head -5
-          ditto -c -k --keepParent "$app" dead-stock-finder-macos.zip
-          ls -l dead-stock-finder-macos.zip
+          ditto -c -k --keepParent "$app" idle-stock-finder-macos.zip
+          ls -l idle-stock-finder-macos.zip
       - uses: actions/upload-artifact@v7
         with:
           name: macos-app
-          path: dead-stock-finder-macos.zip
+          path: idle-stock-finder-macos.zip
           if-no-files-found: error
 
   build-windows:
@@ -98,10 +98,10 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: app/package-lock.json }
       - run: npm ci && npm run build
         working-directory: app
-      - run: cargo build --release -p dead-stock-finder --features tauri/custom-protocol
-      - run: cargo test --release -p dead-stock-finder --features tauri/custom-protocol
+      - run: cargo build --release -p idle-stock-finder --features tauri/custom-protocol
+      - run: cargo test --release -p idle-stock-finder --features tauri/custom-protocol
       - name: self-test under strace (every connection must be the loopback mock)
-        run: tools/ci/allowlist-trace.sh target/release/dead-stock-finder selftest-linux.json
+        run: tools/ci/allowlist-trace.sh target/release/idle-stock-finder selftest-linux.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -123,7 +123,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with: { name: macos-app, path: dist }
-      - run: tools/ci/scheduler-test-macos.sh dist/dead-stock-finder-macos.zip "$PWD/scheduler-${{ matrix.runner }}.json"
+      - run: tools/ci/scheduler-test-macos.sh dist/idle-stock-finder-macos.zip "$PWD/scheduler-${{ matrix.runner }}.json"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -163,8 +163,8 @@ jobs:
       - uses: actions/download-artifact@v8
         with: { name: macos-app, path: dist }
       - run: |
-          ditto -x -k dist/dead-stock-finder-macos.zip "$RUNNER_TEMP/app"
-          exe="$RUNNER_TEMP/app/Dead Stock Finder.app/Contents/MacOS/dead-stock-finder"
+          ditto -x -k dist/idle-stock-finder-macos.zip "$RUNNER_TEMP/app"
+          exe="$RUNNER_TEMP/app/Idle Stock Finder.app/Contents/MacOS/idle-stock-finder"
           # Only loopback is reachable: the mock server and nothing else.
           sandbox-exec -p '(version 1)(allow default)(deny network-outbound)(allow network-outbound (remote ip "localhost:*"))' \
             "$exe" --self-test --json-out "$PWD/selftest-${{ matrix.runner }}.json"
@@ -210,12 +210,12 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: app/package-lock.json }
       - run: npm ci && npm run build
         working-directory: app
-      - run: cargo build --release -p dead-stock-finder --features "tauri/custom-protocol ui-test"
+      - run: cargo build --release -p idle-stock-finder --features "tauri/custom-protocol ui-test"
       - run: cargo install tauri-driver --version 2.0.6 --locked
       - name: UI tests
         env:
           WEBKIT_DISABLE_DMABUF_RENDERER: "1"
-        run: xvfb-run -a -s "-screen 0 1400x900x24" python3 tools/ui/ui_tests.py --app target/release/dead-stock-finder --shots ui-shots
+        run: xvfb-run -a -s "-screen 0 1400x900x24" python3 tools/ui/ui_tests.py --app target/release/idle-stock-finder --shots ui-shots
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -234,7 +234,7 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: app/package-lock.json }
       - run: npm ci && npm run build
         working-directory: app
-      - run: cargo build --release -p dead-stock-finder --features "tauri/custom-protocol ui-test"
+      - run: cargo build --release -p idle-stock-finder --features "tauri/custom-protocol ui-test"
       - name: UI tests
         shell: pwsh
         env:
@@ -253,7 +253,7 @@ jobs:
               $driver = Join-Path $env:RUNNER_TEMP "edgedriver\msedgedriver.exe"
             } catch { "could not fetch Edge WebDriver $($wv2.pv): $_" }
           }
-          python tools/ui/ui_tests.py --attach --app target/release/dead-stock-finder.exe --native-driver $driver --shots ui-shots
+          python tools/ui/ui_tests.py --attach --app target/release/idle-stock-finder.exe --native-driver $driver --shots ui-shots
       - uses: actions/upload-artifact@v7
         if: always()
         with:

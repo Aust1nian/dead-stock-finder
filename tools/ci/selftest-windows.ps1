@@ -8,7 +8,7 @@ param(
 )
 $ErrorActionPreference = "Stop"
 Start-Process -FilePath $Installer -ArgumentList "/S" -Wait
-$exe = Join-Path $env:LOCALAPPDATA "Dead Stock Finder\dead-stock-finder.exe"
+$exe = Join-Path $env:LOCALAPPDATA "Idle Stock Finder\idle-stock-finder.exe"
 if (-not (Test-Path $exe)) { throw "not installed at $exe" }
 $rule = "dsf-selftest-block"
 New-NetFirewallRule -DisplayName $rule -Direction Outbound -Program $exe -Action Block `

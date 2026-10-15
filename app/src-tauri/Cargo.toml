@@ -1,12 +1,12 @@
 [package]
-name = "dead-stock-finder"
-description = "Dead Stock Finder: finds items that haven't sold in Square and labels them."
+name = "idle-stock-finder"
+description = "Idle Stock Finder: finds items that haven't sold in Square and labels them."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
 rust-version.workspace = true
-default-run = "dead-stock-finder"
+default-run = "idle-stock-finder"
 
 [features]
 # Development builds: allow Square's Sandbox (never in release builds).

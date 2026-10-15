@@ -421,13 +421,13 @@ fn after(cache: &Cache, deps: &Deps, outcome: &Outcome, now: DateTime<Utc>, log:
             match summary.label_problem.as_deref() {
                 Some(p) if p.starts_with("label writes stopped") => notify_once(
                     "notified_halt",
-                    "Dead Stock Finder stopped writing labels",
-                    "Square stored more than a label on one item. Open Dead Stock Finder to see what changed.",
+                    "Idle Stock Finder stopped writing labels",
+                    "Square stored more than a label on one item. Open Idle Stock Finder to see what changed.",
                 ),
                 Some(p) if p.starts_with("reconnect") => notify_once(
                     "notified_scope",
                     "Reconnect Square to keep labels current",
-                    "Dead Stock Finder needs permission to write labels in Square.",
+                    "Idle Stock Finder needs permission to write labels in Square.",
                 ),
                 _ => {
                     let _ = cache.clear_meta("notified_scope");
@@ -440,7 +440,7 @@ fn after(cache: &Cache, deps: &Deps, outcome: &Outcome, now: DateTime<Utc>, log:
         Outcome::Disconnected => notify_once(
             "notified_disconnected",
             "Reconnect Square to keep labels current",
-            "Square ended Dead Stock Finder's connection. Open the app and choose Connect Square.",
+            "Square ended Idle Stock Finder's connection. Open the app and choose Connect Square.",
         ),
         Outcome::Failed(reason) => {
             let start = cache.meta_time("failure_streak_start").ok().flatten().unwrap_or(now);

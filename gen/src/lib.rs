@@ -126,7 +126,7 @@ use serde_json::{Value, json};
 pub use truth::months_for_window;
 
 /// The app's label key in `custom_attribute_values` (must equal the app's).
-pub const LABEL_KEY: &str = "dead_stock_last_sold";
+pub const LABEL_KEY: &str = "idle_stock_last_sold";
 
 /// The windows a seed can draw, by `seed % 7`.
 pub const WINDOWS: [u32; 7] = [30, 60, 90, 120, 180, 365, 400];

@@ -24,9 +24,9 @@ record() {
 
 apps="$HOME/Applications"
 mkdir -p "$apps"
-app="$apps/Dead Stock Finder.app"
-exe="$app/Contents/MacOS/dead-stock-finder"
-data="$HOME/Library/Application Support/com.tightline.deadstockfinder"
+app="$apps/Idle Stock Finder.app"
+exe="$app/Contents/MacOS/idle-stock-finder"
+data="$HOME/Library/Application Support/com.tightline.idlestockfinder"
 rm -rf "$app" "$data"
 
 install_from() { # dmg
@@ -35,7 +35,7 @@ install_from() { # dmg
   local mnt
   mnt="$(hdiutil attach -nobrowse -readonly "$dmg" | tail -1 | sed -E 's/^.*(\/Volumes\/.*)$/\1/')"
   rm -rf "$app"
-  ditto "$mnt/Dead Stock Finder.app" "$app"
+  ditto "$mnt/Idle Stock Finder.app" "$app"
   hdiutil detach "$mnt" -quiet || true
 }
 
@@ -66,11 +66,11 @@ fi
 # 2. State an owner would have: setup done, a saved connection, a cache,
 #    the background check registered.
 "$exe" --test-mark-setup
-security add-generic-password -U -s com.tightline.deadstockfinder -a square-production -l "Dead Stock Finder: Square connection" -w '{"test":"upgrade"}' >/dev/null
+security add-generic-password -U -s com.tightline.idlestockfinder -a square-production -l "Idle Stock Finder: Square connection" -w '{"test":"upgrade"}' >/dev/null
 reg="$("$exe" --schedule register 2>&1)"
 grep -q '"sm_app_service"' <<<"$reg" && record "register" pass "$(tr -d '\n' <<<"$reg")" || record "register" fail "$(tr -d '\n' <<<"$reg")"
 sleep 2
-btm="$(sudo sfltool dumpbtm 2>/dev/null | grep -c 'com.tightline.deadstockfinder')"
+btm="$(sudo sfltool dumpbtm 2>/dev/null | grep -c 'com.tightline.idlestockfinder')"
 [ "$btm" -gt 0 ] && record "login-items" pass "$btm entries" || record "login-items" fail "not in Login Items"
 cache_before="$(sqlite3 "$data/cache.sqlite" "SELECT value FROM settings" 2>/dev/null)"
 
@@ -79,16 +79,16 @@ install_from "$new_dmg"
 xattr -d com.apple.quarantine "$app" 2>/dev/null
 new_version="$(defaults read "$app/Contents/Info.plist" CFBundleShortVersionString)"
 record "upgraded" info "now $new_version"
-token="$(security find-generic-password -s com.tightline.deadstockfinder -a square-production -w 2>/dev/null)"
+token="$(security find-generic-password -s com.tightline.idlestockfinder -a square-production -w 2>/dev/null)"
 [ "$token" = '{"test":"upgrade"}' ] && record "upgrade-keeps-connection" pass "keychain entry unchanged" || record "upgrade-keeps-connection" fail "got: $token"
 cache_after="$(sqlite3 "$data/cache.sqlite" "SELECT value FROM settings" 2>/dev/null)"
 [ -n "$cache_before" ] && [ "$cache_before" = "$cache_after" ] && record "upgrade-keeps-cache" pass "$cache_after" || record "upgrade-keeps-cache" fail "before: $cache_before after: $cache_after"
 status="$("$exe" --schedule status 2>&1)"
 grep -q 'enabled' <<<"$status" && record "upgrade-keeps-background-check" pass "$(tr -d '\n' <<<"$status")" || record "upgrade-keeps-background-check" fail "$(tr -d '\n' <<<"$status")"
-launchctl print "gui/$(id -u)/com.tightline.deadstockfinder.daily" >/dev/null 2>&1 && record "upgrade-agent-loaded" pass "daily agent loaded" || record "upgrade-agent-loaded" fail "daily agent not loaded"
+launchctl print "gui/$(id -u)/com.tightline.idlestockfinder.daily" >/dev/null 2>&1 && record "upgrade-agent-loaded" pass "daily agent loaded" || record "upgrade-agent-loaded" fail "daily agent not loaded"
 
 # 4. Clean up: unregister, delete the test connection.
 "$exe" --schedule unregister >/dev/null
-security delete-generic-password -s com.tightline.deadstockfinder -a square-production >/dev/null 2>&1
+security delete-generic-password -s com.tightline.idlestockfinder -a square-production >/dev/null 2>&1
 printf '{"runner":"%s","failed":%s,"checks":[%s]}\n' "${RUNNER_NAME:-local}" "$failed" "$(IFS=,; echo "${results[*]}")" > "$out"
 exit $failed
